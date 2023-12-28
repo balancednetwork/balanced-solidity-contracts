@@ -242,7 +242,7 @@ contract XCallManagerTest is Test {
         );
     }
 
-    function testConfigureProtocols_withProposa() public {
+    function testConfigureProtocols_withProposal() public {
         // Arrange
         newSources = ["0x045", "0x046"];
         newDestinations = ["cx35", "cx36"];
