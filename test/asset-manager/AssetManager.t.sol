@@ -22,7 +22,6 @@ contract AssetManagerTest is Test {
     using RLPEncodeStruct for Messages.Deposit;
     using RLPEncodeStruct for Messages.DepositRevert;
     using RLPEncodeStruct for Messages.WithdrawTo;
-    // using RLPDecodeStruct for bytes;
 
     address public user = address(0x1234);
     AssetManager public assetManager;

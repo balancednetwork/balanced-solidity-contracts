@@ -2,7 +2,8 @@
 pragma solidity >=0.8.0;
 
 import "forge-std/console.sol";
-import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
+import "forge-std/interfaces/IERC20.sol";
+import "forge-std/interfaces/IERC4626.sol";
 import "@openzeppelin/contracts-upgradeable/proxy/utils/UUPSUpgradeable.sol";
 import "@openzeppelin/contracts-upgradeable/access/OwnableUpgradeable.sol";
 import "@openzeppelin/contracts/proxy/ERC1967/ERC1967Utils.sol";
@@ -16,18 +17,13 @@ import "./Messages.sol";
 import "./RLPEncodeStruct.sol";
 import "../lib/interfaces/IXCallManager.sol";
 
-interface IPassivePool {
-    function rate() external view returns (uint);
-}
-
-
 contract OracleProxy is UUPSUpgradeable, OwnableUpgradeable {
     using RLPEncodeStruct for Messages.UpdatePriceData;
 
     address public xCall;
     string public iconOracle;
     address public xCallManager;
-    address public hiYieldPassivePool;
+    mapping(address => bool) public creditVaults;
 
     function initialize(
         address _xCall,
@@ -51,8 +47,12 @@ contract OracleProxy is UUPSUpgradeable, OwnableUpgradeable {
     }
 
 
-    function configureHiYield(address _passivePool) external onlyOwner {
-        hiYieldPassivePool = _passivePool;
+    function addCreditVault(address _vault) external onlyOwner {
+        creditVaults[_vault] = true;
+    }
+
+    function removeCreditVault(address _vault) external onlyOwner {
+        delete creditVaults[_vault];
     }
 
     /* ========== UUPS ========== */
@@ -63,27 +63,33 @@ contract OracleProxy is UUPSUpgradeable, OwnableUpgradeable {
         return ERC1967Utils.getImplementation();
     }
 
-    function updateHiYeildPrice() external payable {
-        Messages.UpdatePriceData memory hiYeildPriceData = fetchHiYeildPrice();
+    function updateCreditVaultPrice(address _vault) external payable {
+        require(creditVaults[_vault], "Credit vault not whitelisted");
+        Messages.UpdatePriceData memory priceData = fetchCreditVaultPrice(_vault);
 
         IXCallManager.Protocols memory protocols = IXCallManager(xCallManager)
             .getProtocols();
         ICallService(xCall).sendCallMessage{value: msg.value}(
             iconOracle,
-            hiYeildPriceData.encodeUpdatePriceData(),
+            priceData.encodeUpdatePriceData(),
             "0x",
             protocols.sources,
             protocols.destinations
         );
     }
 
-    function fetchHiYeildPrice() internal view returns(Messages.UpdatePriceData memory) {
-        uint rate = IPassivePool(hiYieldPassivePool).rate();
-        // Normalize to 18 decimals and nano second timestamp
+    function fetchCreditVaultPrice(address _vault) internal view returns(Messages.UpdatePriceData memory) {
+        string memory symbol = IERC4626(_vault).symbol();
+        uint sharesDecimals = IERC4626(_vault).decimals();
+        address asset = IERC4626(_vault).asset();
+        uint assetDecimals  = IERC20(asset).decimals();
+        uint rate = IERC4626(_vault).convertToAssets(10**sharesDecimals);
+        // convert to 18 decimal
+        rate = rate * 10**(18-assetDecimals);
 
         return Messages.UpdatePriceData(
-            "hyUSDC",
-            rate * 10**12,
+            symbol,
+            rate,
             block.timestamp*1000000
         );
     }
