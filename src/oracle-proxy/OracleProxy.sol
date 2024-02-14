@@ -72,7 +72,7 @@ contract OracleProxy is UUPSUpgradeable, OwnableUpgradeable {
         ICallService(xCall).sendCallMessage{value: msg.value}(
             iconOracle,
             priceData.encodeUpdatePriceData(),
-            "0x",
+            "",
             protocols.sources,
             protocols.destinations
         );
