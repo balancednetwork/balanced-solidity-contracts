@@ -30,9 +30,7 @@ contract OracleProxy is UUPSUpgradeable, OwnableUpgradeable {
         string memory _iconOracle,
         address _xCallManager
     ) public initializer {
-        xCall = _xCall;
-        iconOracle = _iconOracle;
-        xCallManager = _xCallManager;
+        _configure(_xCall, _iconOracle, _xCallManager);
         __Ownable_init(msg.sender);
     }
 
@@ -41,6 +39,14 @@ contract OracleProxy is UUPSUpgradeable, OwnableUpgradeable {
         string memory _iconOracle,
         address _xCallManager
     ) external onlyOwner {
+        _configure(_xCall, _iconOracle, _xCallManager);
+    }
+
+    function _configure(
+        address _xCall,
+        string memory _iconOracle,
+        address _xCallManager
+    ) internal {
         xCall = _xCall;
         iconOracle = _iconOracle;
         xCallManager = _xCallManager;

@@ -74,6 +74,7 @@ contract XCallManager is IXCallManager, ICallServiceReceiver, UUPSUpgradeable,  
     }
 
     function setAdmin(address _admin) external onlyAdmin() {
+        require(_admin != address(0), "Invalid address");
         admin = _admin;
     }
 
@@ -133,18 +134,25 @@ contract XCallManager is IXCallManager, ICallServiceReceiver, UUPSUpgradeable,  
         string[] memory array2
     ) internal pure returns (bool) {
         // Check if the arrays have the same length
-        if (array1.length != array2.length) {
+        uint arr1Len = array1.length;
+        uint arr2Len = array2.length;
+        if (arr1Len != arr2Len) {
             return false;
         }
 
-        for (uint i = 0; i < array1.length; i++) {
-            for (uint j = 0; j < array2.length; j++) {
+        for (uint i = 0; i < arr1Len;) {
+            for (uint j = 0; j < arr2Len;) {
                 if (array1[i].compareTo(array2[j])) {
                     break;
                 } else {
-                    if (j == array2.length - 1) return false;
-                    continue;
+                    if (j == arr2Len - 1) return false;
                 }
+                unchecked{
+                j++;
+                }
+            }
+            unchecked{
+                i++;
             }
         }
 
