@@ -85,7 +85,7 @@ contract OracleProxyTest is Test {
                 xCall.sendCallMessage.selector,
                 BALANCED_ORACLE,
                 expectedMessage.encodeUpdatePriceData(),
-                "0x",
+                "",
                 defaultSources,
                 defaultDestinations
             )
@@ -129,7 +129,7 @@ contract OracleProxyTest is Test {
                 xCall.sendCallMessage.selector,
                 BALANCED_ORACLE,
                 expectedMessage.encodeUpdatePriceData(),
-                "0x",
+                "",
                 defaultSources,
                 defaultDestinations
             )

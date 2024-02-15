@@ -94,7 +94,7 @@ contract AssetManagerTest is Test {
         vm.mockCall(
             address(token),
             abi.encodeWithSelector(token.transferFrom.selector),
-            abi.encode(0)
+            abi.encode(1)
         );
         vm.mockCall(
             address(xCall),
@@ -154,7 +154,7 @@ contract AssetManagerTest is Test {
         vm.mockCall(
             address(token),
             abi.encodeWithSelector(token.transferFrom.selector),
-            abi.encode(0)
+            abi.encode(1)
         );
         vm.mockCall(
             address(xCall),
@@ -215,7 +215,7 @@ contract AssetManagerTest is Test {
         vm.mockCall(
             address(token),
             abi.encodeWithSelector(token.transferFrom.selector),
-            abi.encode(0)
+            abi.encode(1)
         );
         vm.mockCall(
             address(xCall),
@@ -302,7 +302,7 @@ contract AssetManagerTest is Test {
         vm.mockCall(
             address(token),
             abi.encodeWithSelector(token.transfer.selector),
-            abi.encode(0)
+            abi.encode(1)
         );
         Messages.WithdrawTo memory withdrawToMessage = Messages.WithdrawTo(
             address(token).toString(),
@@ -374,7 +374,7 @@ contract AssetManagerTest is Test {
         vm.mockCall(
             address(token),
             abi.encodeWithSelector(token.transfer.selector),
-            abi.encode(0)
+            abi.encode(1)
         );
 
         Messages.DepositRevert memory depositRevertMessage = Messages
