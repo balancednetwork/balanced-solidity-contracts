@@ -3,6 +3,7 @@ pragma solidity >=0.8.0;
 
 import "forge-std/console.sol";
 import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
+import "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
 import "@openzeppelin/contracts-upgradeable/proxy/utils/UUPSUpgradeable.sol";
 import "@openzeppelin/contracts-upgradeable/access/OwnableUpgradeable.sol";
 import "@openzeppelin/contracts/proxy/ERC1967/ERC1967Utils.sol";
@@ -25,6 +26,7 @@ contract AssetManager is ICallServiceReceiver, UUPSUpgradeable,  OwnableUpgradea
     using RLPEncodeStruct for Messages.Deposit;
     using RLPEncodeStruct for Messages.DepositRevert;
     using RLPDecodeStruct for bytes;
+    using SafeERC20 for IERC20;
 
     address public xCall;
     string public xCallNetworkAddress;
@@ -84,8 +86,7 @@ contract AssetManager is ICallServiceReceiver, UUPSUpgradeable,  OwnableUpgradea
         bytes memory data
     ) internal {
         require(amount >= 0, "Amount less than minimum amount");
-        IERC20(token).transferFrom(msg.sender, address(this), amount);
-
+        IERC20(token).safeTransferFrom(msg.sender, address(this), amount);
         Messages.Deposit memory xcallMessage = Messages.Deposit(
             token.toString(),
             msg.sender.toString(),
@@ -142,6 +143,6 @@ contract AssetManager is ICallServiceReceiver, UUPSUpgradeable,  OwnableUpgradea
 
     function withdraw(address token, address to, uint amount) internal {
         require(amount >= 0, "Amount less than minimum amount");
-        IERC20(token).transfer(to, amount);
+        IERC20(token).safeTransfer( to, amount);
     }
 }
