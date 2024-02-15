@@ -85,7 +85,7 @@ contract AssetManager is ICallServiceReceiver, UUPSUpgradeable,  OwnableUpgradea
         string memory to,
         bytes memory data
     ) internal {
-        require(amount >= 0, "Amount less than minimum amount");
+        require(amount > 0, "Amount less than minimum amount");
         IERC20(token).safeTransferFrom(msg.sender, address(this), amount);
         Messages.Deposit memory xcallMessage = Messages.Deposit(
             token.toString(),
