@@ -130,6 +130,53 @@ contract AssetManagerTest is Test {
         assetManager.deposit{value: fee}(address(token), amount);
     }
 
+
+    function testDepositNative_base() public {
+        // Arrange
+        uint256 amount = 100 ether;
+        uint256 fee = 10 ether;
+        uint256 value = amount + fee;
+        vm.deal(user, value);
+        vm.prank(user);
+
+        Messages.Deposit memory xcallMessage = Messages.Deposit(
+            address(0).toString(),
+            address(user).toString(),
+            "",
+            amount,
+            ""
+        );
+        Messages.DepositRevert memory rollback = Messages.DepositRevert(
+            address(0),
+            amount,
+            address(user)
+        );
+
+        vm.mockCall(
+            address(xCall),
+            fee,
+            abi.encodeWithSelector(xCall.sendCallMessage.selector),
+            abi.encode(0)
+        );
+
+        // Assert
+        vm.expectCall(
+            address(xCall),
+            fee,
+            abi.encodeWithSelector(
+                xCall.sendCallMessage.selector,
+                ICON_ASSET_MANAGER,
+                xcallMessage.encodeDeposit(),
+                rollback.encodeDepositRevert(),
+                defaultSources,
+                defaultDestinations
+            )
+        );
+
+        // Act
+        assetManager.depositNative{value: value}(amount);
+    }
+
     function testDeposit_with_to() public {
         // Arrange
         uint amount = 100;
@@ -328,6 +375,29 @@ contract AssetManagerTest is Test {
         );
     }
 
+      function testWithdrawTo_native() public {
+        // Arrange
+        vm.prank(address(xCall));
+        uint amount = 100 ether;
+        vm.deal(address(assetManager), amount);
+
+        Messages.WithdrawTo memory withdrawToMessage = Messages.WithdrawTo(
+            address(0).toString(),
+            address(user).toString(),
+            amount
+        );
+
+        // Act
+        assetManager.handleCallMessage(
+            ICON_ASSET_MANAGER,
+            withdrawToMessage.encodeWithdrawTo(),
+            defaultSources
+        );
+
+        // Assert
+        assertEq(amount, address(user).balance);
+    }
+
     function testWithdrawNativeTo() public {
         // Arrange
         vm.prank(address(xCall));
@@ -396,6 +466,26 @@ contract AssetManagerTest is Test {
             depositRevertMessage.encodeDepositRevert(),
             defaultSources
         );
+    }
+
+    function testDepositRollback_native() public {
+        // Arrange
+        vm.prank(address(xCall));
+        uint amount = 100 ether;
+        vm.deal(address(assetManager), amount);
+
+        Messages.DepositRevert memory depositRevertMessage = Messages
+            .DepositRevert(address(0), amount, address(user));
+
+        // Act
+        assetManager.handleCallMessage(
+            nid.networkAddress(address(xCall).toString()),
+            depositRevertMessage.encodeDepositRevert(),
+            defaultSources
+        );
+
+        // Assert
+        assertEq(amount, address(user).balance);
     }
 
     function testHandleCallMessage_unknownMessage() public {
