@@ -32,7 +32,7 @@ contract AssetManager is ICallServiceReceiver, UUPSUpgradeable,  OwnableUpgradea
     string public xCallNetworkAddress;
     string public iconAssetManager;
     address public xCallManager;
-
+    address public constant NATIVE_ADDRESS = address(0);
     function initialize(
         address _xCall,
         string memory _iconAssetManager,
@@ -58,7 +58,10 @@ contract AssetManager is ICallServiceReceiver, UUPSUpgradeable,  OwnableUpgradea
         _;
     }
 
-    function deposit(address token, uint amount) external payable {
+    function deposit(
+        address token,
+        uint amount
+    ) external payable {
         _deposit(token, amount, "", "");
     }
 
@@ -79,6 +82,27 @@ contract AssetManager is ICallServiceReceiver, UUPSUpgradeable,  OwnableUpgradea
         _deposit(token, amount, to, data);
     }
 
+        function depositNative(
+        uint amount
+    ) external payable {
+        _depositNative(amount, "", "");
+    }
+
+    function depositNative(
+        uint amount,
+        string memory to
+    ) external payable {
+        _depositNative(amount, to, "");
+    }
+
+    function depositNative(
+        uint amount,
+        string memory to,
+        bytes memory data
+    ) external payable {
+        _depositNative(amount, to, data);
+    }
+
     function _deposit(
         address token,
         uint amount,
@@ -87,6 +111,26 @@ contract AssetManager is ICallServiceReceiver, UUPSUpgradeable,  OwnableUpgradea
     ) internal {
         require(amount >= 0, "Amount less than minimum amount");
         IERC20(token).safeTransferFrom(msg.sender, address(this), amount);
+        sendDepositMessage(token, amount, to, data, msg.value);
+    }
+
+    function _depositNative(
+        uint amount,
+        string memory to,
+        bytes memory data
+    ) internal {
+        require(msg.value >= amount, "Amount less than minimum amount");
+        uint fee = msg.value - amount;
+        sendDepositMessage(NATIVE_ADDRESS, amount, to, data, fee);
+    }
+
+    function sendDepositMessage(
+        address token,
+        uint amount,
+        string memory to,
+        bytes memory data,
+        uint fee
+    ) internal {
         Messages.Deposit memory xcallMessage = Messages.Deposit(
             token.toString(),
             msg.sender.toString(),
@@ -102,7 +146,7 @@ contract AssetManager is ICallServiceReceiver, UUPSUpgradeable,  OwnableUpgradea
 
         IXCallManager.Protocols memory protocols = IXCallManager(xCallManager)
             .getProtocols();
-        ICallService(xCall).sendCallMessage{value: msg.value}(
+        ICallService(xCall).sendCallMessage{value: fee}(
             iconAssetManager,
             xcallMessage.encodeDeposit(),
             rollback.encodeDepositRevert(),
@@ -142,7 +186,12 @@ contract AssetManager is ICallServiceReceiver, UUPSUpgradeable,  OwnableUpgradea
     }
 
     function withdraw(address token, address to, uint amount) internal {
-        require(amount >= 0, "Amount less than minimum amount");
-        IERC20(token).safeTransfer( to, amount);
+        require(amount > 0, "Amount less than minimum amount");
+        if (token == NATIVE_ADDRESS) {
+            bool sent =  payable(to).send(amount);
+            require(sent, "Failed to send tokens");
+        } else {
+            IERC20(token).safeTransfer( to, amount);
+        }
     }
 }
