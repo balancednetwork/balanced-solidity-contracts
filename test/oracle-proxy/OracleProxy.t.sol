@@ -9,6 +9,9 @@ import "@balanced/contracts/oracle-proxy/OracleProxy.sol";
 import "@balanced/contracts/oracle-proxy/Messages.sol";
 import "@balanced/contracts/lib/interfaces/IXCallManager.sol";
 
+import "@openzeppelin/contracts-upgradeable/access/OwnableUpgradeable.sol";
+import "@openzeppelin/contracts/proxy/ERC1967/ERC1967Proxy.sol";
+
 import "@iconfoundation/xcall-solidity-library/interfaces/ICallService.sol";
 import "@iconfoundation/xcall-solidity-library/utils/NetworkAddress.sol";
 import "@iconfoundation/xcall-solidity-library/utils/Strings.sol";
@@ -22,6 +25,8 @@ contract OracleProxyTest is Test {
     using RLPEncodeStruct for Messages.UpdatePriceData;
 
     address public user = address(0x1234);
+    address public owner = address(0x2345);
+
     OracleProxy public oracelProxy;
     IXCallManager public xCallManager;
     ICallService public xCall;
@@ -37,7 +42,6 @@ contract OracleProxyTest is Test {
         creditVault = IERC4626(address(0x03));
         asset = IERC20(address(0x04));
 
-        oracelProxy = new OracleProxy();
         vm.mockCall(
             address(xCallManager),
             abi.encodeWithSelector(xCallManager.getProtocols.selector),
@@ -46,11 +50,16 @@ contract OracleProxyTest is Test {
             )
         );
 
-        oracelProxy.initialize(
+
+        oracelProxy = new OracleProxy();
+        address oracelProxyAddress = address(oracelProxy);
+        vm.prank(owner);
+        oracelProxy = OracleProxy(address(new ERC1967Proxy(oracelProxyAddress,  abi.encodeWithSelector(
+            oracelProxy.initialize.selector,
             address(xCall),
             BALANCED_ORACLE,
             address(xCallManager)
-        );
+        ))));
     }
 
     function testUpdatePrice() public {
@@ -92,6 +101,7 @@ contract OracleProxyTest is Test {
         );
 
         // Act
+        vm.prank(owner);
         oracelProxy.addCreditVault(address(creditVault));
         oracelProxy.updateCreditVaultPrice{value: fee}(address(creditVault));
     }
@@ -136,8 +146,10 @@ contract OracleProxyTest is Test {
         );
 
         // Act
+        vm.prank(owner);
         oracelProxy.addCreditVault(address(creditVault));
         oracelProxy.updateCreditVaultPrice{value: fee}(address(creditVault));
+        vm.prank(owner);
         oracelProxy.removeCreditVault(address(creditVault));
 
          // Assert
@@ -153,5 +165,39 @@ contract OracleProxyTest is Test {
 
         // Act
         oracelProxy.updateCreditVaultPrice(address(creditVault));
+    }
+
+
+   function testAddRemoveVault_OwnerOnly() public {
+        vm.prank(user);
+        vm.expectRevert(abi.encodeWithSelector(OwnableUpgradeable.OwnableUnauthorizedAccount.selector, user));
+        oracelProxy.addCreditVault(address(creditVault));
+
+        vm.prank(user);
+        vm.expectRevert(abi.encodeWithSelector(OwnableUpgradeable.OwnableUnauthorizedAccount.selector, user));
+        oracelProxy.removeCreditVault(address(creditVault));
+    }
+
+
+    function testUpgrade_notOwner() public {
+        // Arrange
+        address oracelProxyAddress = address(new OracleProxy());
+        vm.prank(user);
+
+        // Assert
+        vm.expectRevert(abi.encodeWithSelector(OwnableUpgradeable.OwnableUnauthorizedAccount.selector, user));
+        oracelProxy.upgradeToAndCall(oracelProxyAddress, "");
+    }
+
+    function testUpgrade() public {
+        // Arrange
+        address oracelProxyAddress = address(new OracleProxy());
+        vm.prank(owner);
+
+        // Act
+        oracelProxy.upgradeToAndCall(oracelProxyAddress, "");
+
+        // Assert
+        assertEq(oracelProxyAddress, oracelProxy.getImplementation());
     }
 }

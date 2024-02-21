@@ -16,7 +16,7 @@ import "./RLPEncodeStruct.sol";
 import "./RLPDecodeStruct.sol";
 import "../lib/interfaces/IXCallManager.sol";
 
-contract XCallManager is IXCallManager, ICallServiceReceiver, UUPSUpgradeable,  OwnableUpgradeable {
+contract XCallManager is IXCallManager, ICallServiceReceiver, UUPSUpgradeable, OwnableUpgradeable {
     using Strings for string;
     using NetworkAddress for string;
     using ParseAddress for address;
@@ -75,6 +75,11 @@ contract XCallManager is IXCallManager, ICallServiceReceiver, UUPSUpgradeable,  
 
     function setAdmin(address _admin) external onlyAdmin() {
         admin = _admin;
+    }
+
+    function setProtocols(string[] memory _sources, string[] memory _destinations) external onlyOwner() {
+        sources = _sources;
+        destinations = _destinations;
     }
 
     function verifyProtocols(
