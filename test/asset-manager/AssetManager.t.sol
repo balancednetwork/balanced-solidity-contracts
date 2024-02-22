@@ -9,6 +9,9 @@ import "@balanced/contracts/asset-manager/AssetManager.sol";
 import "@balanced/contracts/asset-manager/Messages.sol";
 import "@balanced/contracts/lib/interfaces/IXCallManager.sol";
 
+import "@openzeppelin/contracts-upgradeable/access/OwnableUpgradeable.sol";
+import "@openzeppelin/contracts/proxy/ERC1967/ERC1967Proxy.sol";
+
 import "@iconfoundation/xcall-solidity-library/interfaces/ICallService.sol";
 import "@iconfoundation/xcall-solidity-library/utils/NetworkAddress.sol";
 import "@iconfoundation/xcall-solidity-library/utils/Strings.sol";
@@ -24,6 +27,7 @@ contract AssetManagerTest is Test {
     using RLPEncodeStruct for Messages.WithdrawTo;
 
     address public user = address(0x1234);
+    address public owner = address(0x2345);
     AssetManager public assetManager;
     IXCallManager public xCallManager;
     ICallService public xCall;
@@ -37,7 +41,6 @@ contract AssetManagerTest is Test {
         xCall = ICallService(address(0x01));
         xCallManager = IXCallManager(address(0x02));
         token = IERC20(address(0x3));
-        assetManager = new AssetManager();
         vm.mockCall(
             address(xCall),
             abi.encodeWithSelector(xCall.getNetworkAddress.selector),
@@ -64,11 +67,16 @@ contract AssetManagerTest is Test {
             abi.encode(true)
         );
 
-        assetManager.initialize(
+        assetManager = new AssetManager();
+        address assetManagerAddress = address(assetManager);
+        vm.prank(owner);
+        assetManager = AssetManager(address(new ERC1967Proxy(assetManagerAddress,  abi.encodeWithSelector(
+            assetManager.initialize.selector,
             address(xCall),
             ICON_ASSET_MANAGER,
             address(xCallManager)
-        );
+        ))));
+
     }
 
     function testDeposit_base() public {
@@ -509,5 +517,27 @@ contract AssetManagerTest is Test {
             xcallMessage.encodeDeposit(),
             defaultSources
         );
+    }
+
+    function testUpgrade_notOwner() public {
+        // Arrange
+        address assetManagerAddress = address(new AssetManager());
+        vm.prank(user);
+
+        // Assert
+        vm.expectRevert(abi.encodeWithSelector(OwnableUpgradeable.OwnableUnauthorizedAccount.selector, user));
+        assetManager.upgradeToAndCall(assetManagerAddress, "");
+    }
+
+    function testUpgrade() public {
+        // Arrange
+        address assetManagerAddress = address(new AssetManager());
+        vm.prank(owner);
+
+        // Act
+        assetManager.upgradeToAndCall(assetManagerAddress, "");
+
+        // Assert
+        assertEq(assetManagerAddress, assetManager.getImplementation());
     }
 }

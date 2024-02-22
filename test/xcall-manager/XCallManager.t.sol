@@ -9,6 +9,9 @@ import "@balanced/contracts/xcall-manager/XCallManager.sol";
 import "@balanced/contracts/xcall-manager/Messages.sol";
 import "@balanced/contracts/lib/interfaces/IXCallManager.sol";
 
+import "@openzeppelin/contracts-upgradeable/access/OwnableUpgradeable.sol";
+import "@openzeppelin/contracts/proxy/ERC1967/ERC1967Proxy.sol";
+
 import "@iconfoundation/xcall-solidity-library/interfaces/ICallService.sol";
 import "@iconfoundation/xcall-solidity-library/utils/NetworkAddress.sol";
 import "@iconfoundation/xcall-solidity-library/utils/Strings.sol";
@@ -24,6 +27,7 @@ contract XCallManagerTest is Test {
 
     address public user = address(0x11);
     address public admin = address(0x12);
+    address public owner = address(0x13);
     XCallManager public xCallManager;
     ICallService public xCall;
     IERC20 public token;
@@ -39,19 +43,23 @@ contract XCallManagerTest is Test {
     function setUp() public {
         xCall = ICallService(address(0x01));
         token = IERC20(address(0x3));
-        xCallManager = new XCallManager();
         vm.mockCall(
             address(xCall),
             abi.encodeWithSelector(xCall.getNetworkAddress.selector),
             abi.encode(nid.networkAddress(address(xCall).toString()))
         );
-        xCallManager.initialize(
+
+        xCallManager = new XCallManager();
+        address xCallManagerAddress = address(xCallManager);
+        vm.prank(owner);
+        xCallManager = XCallManager(address(new ERC1967Proxy(xCallManagerAddress,  abi.encodeWithSelector(
+            xCallManager.initialize.selector,
             address(xCall),
             ICON_GOVERNANCE,
             admin,
             defaultSources,
             defaultDestinations
-        );
+        ))));
     }
 
     function testGetProtocols() public view {
@@ -274,5 +282,55 @@ contract XCallManagerTest is Test {
                     )
                 )
         );
+    }
+
+    function testSetProtocols() public {
+        // Arrange
+        newSources = ["0x045", "0x046"];
+        newDestinations = ["cx35", "cx36"];
+
+        // Act
+        vm.prank(owner);
+        xCallManager.setProtocols(newSources, newDestinations);
+
+        // Assert
+        assertTrue(xCallManager.verifyProtocols(newSources));
+        assertFalse(xCallManager.verifyProtocols(defaultSources));
+    }
+
+
+    function testSetProtocols_onlyOwner() public {
+        // Arrange
+        newSources = ["0x045", "0x046"];
+        newDestinations = ["cx35", "cx36"];
+
+        // Assert
+        vm.expectRevert(abi.encodeWithSelector(OwnableUpgradeable.OwnableUnauthorizedAccount.selector, user));
+
+        // Act
+        vm.prank(user);
+        xCallManager.setProtocols(newSources, newDestinations);
+    }
+
+    function testUpgrade_notOwner() public {
+        // Arrange
+        address xCallManagerAddress = address(new XCallManager());
+        vm.prank(user);
+
+        // Assert
+        vm.expectRevert(abi.encodeWithSelector(OwnableUpgradeable.OwnableUnauthorizedAccount.selector, user));
+        xCallManager.upgradeToAndCall(xCallManagerAddress, "");
+    }
+
+    function testUpgrade() public {
+        // Arrange
+        address xCallManagerAddress = address(new XCallManager());
+        vm.prank(owner);
+
+        // Act
+        xCallManager.upgradeToAndCall(xCallManagerAddress, "");
+
+        // Assert
+        assertEq(xCallManagerAddress, xCallManager.getImplementation());
     }
 }

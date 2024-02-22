@@ -18,7 +18,7 @@ import "./RLPEncodeStruct.sol";
 import "./RLPDecodeStruct.sol";
 import "../lib/interfaces/IXCallManager.sol";
 
-contract AssetManager is ICallServiceReceiver, UUPSUpgradeable,  OwnableUpgradeable {
+contract AssetManager is ICallServiceReceiver, UUPSUpgradeable, OwnableUpgradeable {
     using Strings for string;
     using NetworkAddress for string;
     using ParseAddress for address;
@@ -47,7 +47,7 @@ contract AssetManager is ICallServiceReceiver, UUPSUpgradeable,  OwnableUpgradea
 
         /* ========== UUPS ========== */
     //solhint-disable-next-line no-empty-blocks
-    function _authorizeUpgrade(address) internal override {}
+    function _authorizeUpgrade(address) internal override onlyOwner {}
 
     function getImplementation() external view returns (address) {
         return ERC1967Utils.getImplementation();
