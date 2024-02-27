@@ -70,19 +70,13 @@ contract AssetManagerTest is Test {
         assetManager = new AssetManager();
         address assetManagerAddress = address(assetManager);
         vm.prank(owner);
-        assetManager = AssetManager(
-            address(
-                new ERC1967Proxy(
-                    assetManagerAddress,
-                    abi.encodeWithSelector(
-                        assetManager.initialize.selector,
-                        address(xCall),
-                        ICON_ASSET_MANAGER,
-                        address(xCallManager)
-                    )
-                )
-            )
-        );
+        assetManager = AssetManager(address(new ERC1967Proxy(assetManagerAddress,  abi.encodeWithSelector(
+            assetManager.initialize.selector,
+            address(xCall),
+            ICON_ASSET_MANAGER,
+            address(xCallManager)
+        ))));
+
     }
 
     function testDeposit_base() public {
@@ -143,6 +137,7 @@ contract AssetManagerTest is Test {
         // Act
         assetManager.deposit{value: fee}(address(token), amount);
     }
+
 
     function testDepositNative_base() public {
         // Arrange
@@ -388,7 +383,7 @@ contract AssetManagerTest is Test {
         );
     }
 
-    function testWithdrawTo_native() public {
+      function testWithdrawTo_native() public {
         // Arrange
         vm.prank(address(xCall));
         uint amount = 100 ether;
@@ -430,99 +425,6 @@ contract AssetManagerTest is Test {
             withdrawToMessage.encodeWithdrawNativeTo(),
             defaultSources
         );
-    }
-
-    function testWithdrawLimits() public {
-        // Arrange
-        uint amount = 51 ether;
-        uint limit = 100 ether;
-        uint period = 100; // 50 eth every 100 seconds
-        vm.prank(owner);
-        assetManager.configureRateLimit(address(0), period, limit);
-        vm.deal(address(assetManager), amount * 2);
-
-        Messages.WithdrawTo memory withdrawToMessage = Messages.WithdrawTo(
-            address(0).toString(),
-            address(user).toString(),
-            amount
-        );
-
-        // Act
-        vm.prank(address(xCall));
-        assetManager.handleCallMessage(
-            ICON_ASSET_MANAGER,
-            withdrawToMessage.encodeWithdrawTo(),
-            defaultSources
-        );
-
-        vm.expectRevert("exceeds period limit");
-
-        vm.prank(address(xCall));
-        assetManager.handleCallMessage(
-            ICON_ASSET_MANAGER,
-            withdrawToMessage.encodeWithdrawTo(),
-            defaultSources
-        );
-
-        vm.warp(block.timestamp + 101);
-
-        vm.prank(address(xCall));
-        assetManager.handleCallMessage(
-            ICON_ASSET_MANAGER,
-            withdrawToMessage.encodeWithdrawTo(),
-            defaultSources
-        );
-
-        // Assert
-        assertEq(amount * 2, address(user).balance);
-        assertEq(amount, assetManager.currentPeriodAmount(address(0)));
-    }
-
-    function testWithdrawLimits_reset() public {
-        // Arrange
-        uint amount = 51 ether;
-        uint limit = 100 ether;
-        uint period = 100; // 50 eth every 100 seconds
-        vm.prank(owner);
-        assetManager.configureRateLimit(address(0), period, limit);
-        vm.deal(address(assetManager), amount * 2);
-
-        Messages.WithdrawTo memory withdrawToMessage = Messages.WithdrawTo(
-            address(0).toString(),
-            address(user).toString(),
-            amount
-        );
-
-        // Act
-        vm.prank(address(xCall));
-        assetManager.handleCallMessage(
-            ICON_ASSET_MANAGER,
-            withdrawToMessage.encodeWithdrawTo(),
-            defaultSources
-        );
-
-        vm.expectRevert("exceeds period limit");
-
-        vm.prank(address(xCall));
-        assetManager.handleCallMessage(
-            ICON_ASSET_MANAGER,
-            withdrawToMessage.encodeWithdrawTo(),
-            defaultSources
-        );
-
-        vm.prank(owner);
-        assetManager.resetLimit(address(0));
-
-        vm.prank(address(xCall));
-        assetManager.handleCallMessage(
-            ICON_ASSET_MANAGER,
-            withdrawToMessage.encodeWithdrawTo(),
-            defaultSources
-        );
-
-        // Assert
-        assertEq(amount * 2, address(user).balance);
-        assertEq(amount, assetManager.currentPeriodAmount(address(0)));
     }
 
     function testDepositRollback_onlyCallService() public {
@@ -623,12 +525,7 @@ contract AssetManagerTest is Test {
         vm.prank(user);
 
         // Assert
-        vm.expectRevert(
-            abi.encodeWithSelector(
-                OwnableUpgradeable.OwnableUnauthorizedAccount.selector,
-                user
-            )
-        );
+        vm.expectRevert(abi.encodeWithSelector(OwnableUpgradeable.OwnableUnauthorizedAccount.selector, user));
         assetManager.upgradeToAndCall(assetManagerAddress, "");
     }
 

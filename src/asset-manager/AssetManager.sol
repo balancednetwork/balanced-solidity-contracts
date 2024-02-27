@@ -18,11 +18,7 @@ import "./RLPEncodeStruct.sol";
 import "./RLPDecodeStruct.sol";
 import "../lib/interfaces/IXCallManager.sol";
 
-contract AssetManager is
-    ICallServiceReceiver,
-    UUPSUpgradeable,
-    OwnableUpgradeable
-{
+contract AssetManager is ICallServiceReceiver, UUPSUpgradeable, OwnableUpgradeable {
     using Strings for string;
     using NetworkAddress for string;
     using ParseAddress for address;
@@ -37,12 +33,6 @@ contract AssetManager is
     string public iconAssetManager;
     address public xCallManager;
     address public constant NATIVE_ADDRESS = address(0);
-
-    mapping(address => uint) public period;
-    mapping(address => uint) public limit;
-    mapping(address => uint) public currentPeriodEnd;
-    mapping(address => uint) public currentPeriodAmount;
-
     function initialize(
         address _xCall,
         string memory _iconAssetManager,
@@ -55,7 +45,7 @@ contract AssetManager is
         __Ownable_init(msg.sender);
     }
 
-    /* ========== UUPS ========== */
+        /* ========== UUPS ========== */
     //solhint-disable-next-line no-empty-blocks
     function _authorizeUpgrade(address) internal override onlyOwner {}
 
@@ -68,43 +58,10 @@ contract AssetManager is
         _;
     }
 
-    function configureRateLimit(
+    function deposit(
         address token,
-        uint _period,
-        uint _limit
-    ) external onlyOwner {
-        period[token] = _period;
-        limit[token] = _limit;
-        currentPeriodEnd[token] = block.timestamp + _period;
-        currentPeriodAmount[token] = 0;
-    }
-
-    function resetLimit(address token) external onlyOwner {
-        currentPeriodAmount[token] = 0;
-    }
-
-    function verifyWithdraw(address token, uint amount) internal {
-        uint _period = period[token];
-        if (_period == 0) {
-            return;
-        }
-
-        if (currentPeriodEnd[token] < block.timestamp) {
-            currentPeriodEnd[token] = block.timestamp + _period;
-            currentPeriodAmount[token] = 0;
-        }
-
-        // Prevent overflow
-        uint periodAmount = currentPeriodAmount[token];
-        uint totalAmount = periodAmount + amount;
-        require(totalAmount >= periodAmount, "overflow");
-
-        // Disallow withdraws that exceed current rate limit
-        require(periodAmount + amount < limit[token], "exceeds period limit");
-        currentPeriodAmount[token] += amount;
-    }
-
-    function deposit(address token, uint amount) external payable {
+        uint amount
+    ) external payable {
         _deposit(token, amount, "", "");
     }
 
@@ -125,11 +82,16 @@ contract AssetManager is
         _deposit(token, amount, to, data);
     }
 
-    function depositNative(uint amount) external payable {
+        function depositNative(
+        uint amount
+    ) external payable {
         _depositNative(amount, "", "");
     }
 
-    function depositNative(uint amount, string memory to) external payable {
+    function depositNative(
+        uint amount,
+        string memory to
+    ) external payable {
         _depositNative(amount, to, "");
     }
 
@@ -225,12 +187,11 @@ contract AssetManager is
 
     function withdraw(address token, address to, uint amount) internal {
         require(amount > 0, "Amount less than minimum amount");
-        verifyWithdraw(token, amount);
         if (token == NATIVE_ADDRESS) {
-            bool sent = payable(to).send(amount);
+            bool sent =  payable(to).send(amount);
             require(sent, "Failed to send tokens");
         } else {
-            IERC20(token).safeTransfer(to, amount);
+            IERC20(token).safeTransfer( to, amount);
         }
     }
 }
