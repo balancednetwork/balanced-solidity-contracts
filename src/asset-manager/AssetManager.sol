@@ -75,6 +75,8 @@ contract AssetManager is
         uint _period,
         uint _percentage
     ) external onlyOwner {
+        require(_percentage <= POINTS,"Percentage should be less than or equal to POINTS");
+
         period[token] = _period;
         percentage[token] = _percentage;
         lastUpdate[token] = block.timestamp;
