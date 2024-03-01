@@ -7,6 +7,7 @@ import "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
 import "@openzeppelin/contracts-upgradeable/proxy/utils/UUPSUpgradeable.sol";
 import "@openzeppelin/contracts-upgradeable/access/OwnableUpgradeable.sol";
 import "@openzeppelin/contracts/proxy/ERC1967/ERC1967Utils.sol";
+import "@openzeppelin/contracts/utils/math/Math.sol";
 
 import "@iconfoundation/xcall-solidity-library/utils/NetworkAddress.sol";
 import "@iconfoundation/xcall-solidity-library/utils/Strings.sol";
@@ -39,10 +40,11 @@ contract AssetManager is
     address public constant NATIVE_ADDRESS = address(0);
 
     mapping(address => uint) public period;
-    mapping(address => uint) public limit;
-    mapping(address => uint) public currentPeriodEnd;
-    mapping(address => uint) public currentPeriodAmount;
+    mapping(address => uint) public percentage;
+    mapping(address => uint) public lastUpdate;
+    mapping(address => uint) public currentLimit;
 
+    uint private constant POINTS = 10000;
     function initialize(
         address _xCall,
         string memory _iconAssetManager,
@@ -71,37 +73,43 @@ contract AssetManager is
     function configureRateLimit(
         address token,
         uint _period,
-        uint _limit
+        uint _percentage
     ) external onlyOwner {
+        require(_percentage <= POINTS,"Percentage should be less than or equal to POINTS");
+
         period[token] = _period;
-        limit[token] = _limit;
-        currentPeriodEnd[token] = block.timestamp + _period;
-        currentPeriodAmount[token] = 0;
+        percentage[token] = _percentage;
+        lastUpdate[token] = block.timestamp;
+        currentLimit[token] = (balanceOf(token) * _percentage) / POINTS;
     }
 
     function resetLimit(address token) external onlyOwner {
-        currentPeriodAmount[token] = 0;
+        currentLimit[token] = (balanceOf(token) * percentage[token]) / POINTS;
     }
 
     function verifyWithdraw(address token, uint amount) internal {
         uint _period = period[token];
+        uint _percentage = percentage[token];
         if (_period == 0) {
             return;
         }
 
-        if (currentPeriodEnd[token] < block.timestamp) {
-            currentPeriodEnd[token] = block.timestamp + _period;
-            currentPeriodAmount[token] = 0;
-        }
+        uint balance = balanceOf(token);
+        uint maxLimit = (balance * _percentage) / POINTS;
+        // The maximum amount that can be withdraw in one period
+        uint maxWithdraw = balance - maxLimit;
+        uint timeDiff = block.timestamp - lastUpdate[token];
+        // The amount that should be added as availbe
+        uint addedAllowedWithdrawal = (maxWithdraw * timeDiff) / _period;
+        uint limit = currentLimit[token] - addedAllowedWithdrawal;
+        // If the balance is below the limit then set limt to current balance (no withdraws are possible)
+        limit = Math.min(balance, limit);
+        // If limit goes below what the protected percentage is set it to the maxLimit
+        limit = Math.max(limit, maxLimit);
+        require(balance - amount >= limit, "exceeds withdraw limit");
 
-        // Prevent overflow
-        uint periodAmount = currentPeriodAmount[token];
-        uint totalAmount = periodAmount + amount;
-        require(totalAmount >= periodAmount, "overflow");
-
-        // Disallow withdraws that exceed current rate limit
-        require(periodAmount + amount < limit[token], "exceeds period limit");
-        currentPeriodAmount[token] += amount;
+        currentLimit[token] = limit;
+        lastUpdate[token] = block.timestamp;
     }
 
     function deposit(address token, uint amount) external payable {
@@ -232,5 +240,12 @@ contract AssetManager is
         } else {
             IERC20(token).safeTransfer(to, amount);
         }
+    }
+
+    function balanceOf(address token) internal returns (uint) {
+        if (token == NATIVE_ADDRESS) {
+            return address(this).balance;
+        }
+        return IERC20(token).balanceOf(address(this));
     }
 }

@@ -434,12 +434,14 @@ contract AssetManagerTest is Test {
 
     function testWithdrawLimits() public {
         // Arrange
-        uint amount = 51 ether;
-        uint limit = 100 ether;
-        uint period = 100; // 50 eth every 100 seconds
+        uint balance = 100 ether;
+        uint amount = 9 ether;
+        uint percentage = 9000; // 90 %
+        uint period = 1000; // over every 1000 secounds which mean 10% loss of balance per 1000 seconds
+        vm.deal(address(assetManager), balance);
         vm.prank(owner);
-        assetManager.configureRateLimit(address(0), period, limit);
-        vm.deal(address(assetManager), amount * 2);
+        assetManager.configureRateLimit(address(0), period, percentage);
+        assertEq(assetManager.currentLimit(address(0)), 90 ether);
 
         Messages.WithdrawTo memory withdrawToMessage = Messages.WithdrawTo(
             address(0).toString(),
@@ -455,7 +457,7 @@ contract AssetManagerTest is Test {
             defaultSources
         );
 
-        vm.expectRevert("exceeds period limit");
+        vm.expectRevert("exceeds withdraw limit");
 
         vm.prank(address(xCall));
         assetManager.handleCallMessage(
@@ -464,7 +466,7 @@ contract AssetManagerTest is Test {
             defaultSources
         );
 
-        vm.warp(block.timestamp + 101);
+        vm.warp(block.timestamp + 1001);
 
         vm.prank(address(xCall));
         assetManager.handleCallMessage(
@@ -474,18 +476,18 @@ contract AssetManagerTest is Test {
         );
 
         // Assert
-        assertEq(amount * 2, address(user).balance);
-        assertEq(amount, assetManager.currentPeriodAmount(address(0)));
+        assertEq(amount*2, address(user).balance);
     }
 
     function testWithdrawLimits_reset() public {
         // Arrange
-        uint amount = 51 ether;
-        uint limit = 100 ether;
-        uint period = 100; // 50 eth every 100 seconds
+        uint balance = 100 ether;
+        uint amount = 9 ether;
+        uint percentage = 9000; // 90 %
+        uint period = 1000; // over every 1000 secounds which mean 10% loss of balance per 1000 seconds
+        vm.deal(address(assetManager), balance);
         vm.prank(owner);
-        assetManager.configureRateLimit(address(0), period, limit);
-        vm.deal(address(assetManager), amount * 2);
+        assetManager.configureRateLimit(address(0), period, percentage);
 
         Messages.WithdrawTo memory withdrawToMessage = Messages.WithdrawTo(
             address(0).toString(),
@@ -501,7 +503,7 @@ contract AssetManagerTest is Test {
             defaultSources
         );
 
-        vm.expectRevert("exceeds period limit");
+        vm.expectRevert("exceeds withdraw limit");
 
         vm.prank(address(xCall));
         assetManager.handleCallMessage(
@@ -522,7 +524,6 @@ contract AssetManagerTest is Test {
 
         // Assert
         assertEq(amount * 2, address(user).balance);
-        assertEq(amount, assetManager.currentPeriodAmount(address(0)));
     }
 
     function testDepositRollback_onlyCallService() public {
