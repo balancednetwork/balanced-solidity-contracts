@@ -52,14 +52,21 @@ contract XCallManagerTest is Test {
         xCallManager = new XCallManager();
         address xCallManagerAddress = address(xCallManager);
         vm.prank(owner);
-        xCallManager = XCallManager(address(new ERC1967Proxy(xCallManagerAddress,  abi.encodeWithSelector(
-            xCallManager.initialize.selector,
-            address(xCall),
-            ICON_GOVERNANCE,
-            admin,
-            defaultSources,
-            defaultDestinations
-        ))));
+        xCallManager = XCallManager(
+            address(
+                new ERC1967Proxy(
+                    xCallManagerAddress,
+                    abi.encodeWithSelector(
+                        xCallManager.initialize.selector,
+                        address(xCall),
+                        ICON_GOVERNANCE,
+                        admin,
+                        defaultSources,
+                        defaultDestinations
+                    )
+                )
+            )
+        );
     }
 
     function testGetProtocols() public view {
@@ -106,7 +113,7 @@ contract XCallManagerTest is Test {
         // Act
         xCallManager.setAdmin(user);
 
-         // Assert
+        // Assert
         assertEq(xCallManager.admin(), user);
     }
 
@@ -154,7 +161,6 @@ contract XCallManagerTest is Test {
 
     function testExecute() public {
         // Arrange
-        vm.prank(address(xCall));
         uint amount = 100;
         vm.mockCall(
             address(token),
@@ -170,6 +176,9 @@ contract XCallManagerTest is Test {
             )
         );
 
+        vm.prank(admin);
+        xCallManager.whitelistAction(executeMessage.encodeExecute());
+
         // Assert
         vm.expectCall(
             address(token),
@@ -181,6 +190,7 @@ contract XCallManagerTest is Test {
         );
 
         // Act
+        vm.prank(address(xCall));
         xCallManager.handleCallMessage(
             ICON_GOVERNANCE,
             executeMessage.encodeExecute(),
@@ -190,14 +200,18 @@ contract XCallManagerTest is Test {
 
     function testConfigureProtocols() public {
         // Arrange
-        vm.prank(address(xCall));
         newSources = ["0x045", "0x046"];
         newDestinations = ["cx35", "cx36"];
 
         Messages.ConfigureProtocols memory configureProtocolsMessage = Messages
             .ConfigureProtocols(newSources, newDestinations);
+        vm.prank(admin);
+        xCallManager.whitelistAction(
+            configureProtocolsMessage.encodeConfigureProtocols()
+        );
 
         // Act
+        vm.prank(address(xCall));
         xCallManager.handleCallMessage(
             ICON_GOVERNANCE,
             configureProtocolsMessage.encodeConfigureProtocols(),
@@ -259,6 +273,10 @@ contract XCallManagerTest is Test {
 
         Messages.ConfigureProtocols memory configureProtocolsMessage = Messages
             .ConfigureProtocols(newSources, newDestinations);
+        vm.prank(admin);
+        xCallManager.whitelistAction(
+            configureProtocolsMessage.encodeConfigureProtocols()
+        );
 
         // Act
         vm.prank(address(admin));
@@ -298,14 +316,18 @@ contract XCallManagerTest is Test {
         assertFalse(xCallManager.verifyProtocols(defaultSources));
     }
 
-
     function testSetProtocols_onlyOwner() public {
         // Arrange
         newSources = ["0x045", "0x046"];
         newDestinations = ["cx35", "cx36"];
 
         // Assert
-        vm.expectRevert(abi.encodeWithSelector(OwnableUpgradeable.OwnableUnauthorizedAccount.selector, user));
+        vm.expectRevert(
+            abi.encodeWithSelector(
+                OwnableUpgradeable.OwnableUnauthorizedAccount.selector,
+                user
+            )
+        );
 
         // Act
         vm.prank(user);
@@ -318,7 +340,12 @@ contract XCallManagerTest is Test {
         vm.prank(user);
 
         // Assert
-        vm.expectRevert(abi.encodeWithSelector(OwnableUpgradeable.OwnableUnauthorizedAccount.selector, user));
+        vm.expectRevert(
+            abi.encodeWithSelector(
+                OwnableUpgradeable.OwnableUnauthorizedAccount.selector,
+                user
+            )
+        );
         xCallManager.upgradeToAndCall(xCallManagerAddress, "");
     }
 
