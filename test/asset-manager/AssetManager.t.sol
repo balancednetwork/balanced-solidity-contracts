@@ -479,6 +479,55 @@ contract AssetManagerTest is Test {
         assertEq(amount*2, address(user).balance);
     }
 
+
+    function testWithdrawLimits_staleWithdraws() public {
+        // Arrange
+        uint balance = 100 ether;
+        uint amount = 9 ether;
+        uint percentage = 9000; // 90 %
+        uint period = 1000; // over every 1000 secounds which mean 10% loss of balance per 1000 seconds
+        vm.deal(address(assetManager), balance);
+        vm.prank(owner);
+        assetManager.configureRateLimit(address(0), period, percentage);
+        assertEq(assetManager.currentLimit(address(0)), 90 ether);
+
+        Messages.WithdrawTo memory withdrawToMessage = Messages.WithdrawTo(
+            address(0).toString(),
+            address(user).toString(),
+            amount
+        );
+
+        // Act
+        vm.prank(address(xCall));
+        assetManager.handleCallMessage(
+            ICON_ASSET_MANAGER,
+            withdrawToMessage.encodeWithdrawTo(),
+            defaultSources
+        );
+
+        vm.expectRevert("exceeds withdraw limit");
+
+        vm.prank(address(xCall));
+        assetManager.handleCallMessage(
+            ICON_ASSET_MANAGER,
+            withdrawToMessage.encodeWithdrawTo(),
+            defaultSources
+        );
+
+        vm.warp(block.timestamp + 10001);
+
+        vm.prank(address(xCall));
+        assetManager.handleCallMessage(
+            ICON_ASSET_MANAGER,
+            withdrawToMessage.encodeWithdrawTo(),
+            defaultSources
+        );
+
+        // Assert
+        assertEq(amount*2, address(user).balance);
+    }
+
+
     function testWithdrawLimits_reset() public {
         // Arrange
         uint balance = 100 ether;
