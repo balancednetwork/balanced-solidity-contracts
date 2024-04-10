@@ -99,6 +99,8 @@ contract AssetManager is
         // The maximum amount that can be withdraw in one period
         uint maxWithdraw = balance - maxLimit;
         uint timeDiff = block.timestamp - lastUpdate[token];
+        timeDiff = Math.min(timeDiff, _period);
+
         // The amount that should be added as availbe
         uint addedAllowedWithdrawal = (maxWithdraw * timeDiff) / _period;
         uint limit = currentLimit[token] - addedAllowedWithdrawal;
