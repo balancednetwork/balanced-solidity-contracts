@@ -3,7 +3,6 @@ pragma solidity >=0.8.0;
 
 import "forge-std/console.sol";
 import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
-import "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
 import "@openzeppelin/contracts-upgradeable/proxy/utils/UUPSUpgradeable.sol";
 import "@openzeppelin/contracts-upgradeable/access/OwnableUpgradeable.sol";
 import "@openzeppelin/contracts/proxy/ERC1967/ERC1967Utils.sol";
@@ -31,7 +30,6 @@ contract AssetManager is
     using RLPEncodeStruct for Messages.Deposit;
     using RLPEncodeStruct for Messages.DepositRevert;
     using RLPDecodeStruct for bytes;
-    using SafeERC20 for IERC20;
 
     address public xCall;
     string public xCallNetworkAddress;
@@ -87,29 +85,39 @@ contract AssetManager is
         currentLimit[token] = (balanceOf(token) * percentage[token]) / POINTS;
     }
 
+   function getWithdrawLimit(address token) external view returns (uint)  {
+        uint balance = balanceOf(token);
+        return calculateLimit(balance, token);
+    }
+
     function verifyWithdraw(address token, uint amount) internal {
+        uint balance = balanceOf(token);
+        uint limit = calculateLimit(balance, token);
+        require(balance - amount >= limit, "exceeds withdraw limit");
+
+        currentLimit[token] = limit;
+        lastUpdate[token] = block.timestamp;
+    }
+
+    function calculateLimit(uint balance, address token) internal view returns (uint) {
         uint _period = period[token];
         uint _percentage = percentage[token];
         if (_period == 0) {
-            return;
+            return 0;
         }
 
-        uint balance = balanceOf(token);
         uint maxLimit = (balance * _percentage) / POINTS;
         // The maximum amount that can be withdraw in one period
         uint maxWithdraw = balance - maxLimit;
         uint timeDiff = block.timestamp - lastUpdate[token];
+
         // The amount that should be added as availbe
         uint addedAllowedWithdrawal = (maxWithdraw * timeDiff) / _period;
         uint limit = currentLimit[token] - addedAllowedWithdrawal;
         // If the balance is below the limit then set limt to current balance (no withdraws are possible)
         limit = Math.min(balance, limit);
         // If limit goes below what the protected percentage is set it to the maxLimit
-        limit = Math.max(limit, maxLimit);
-        require(balance - amount >= limit, "exceeds withdraw limit");
-
-        currentLimit[token] = limit;
-        lastUpdate[token] = block.timestamp;
+        return  Math.max(limit, maxLimit);
     }
 
     function deposit(address token, uint amount) external payable {
@@ -156,7 +164,7 @@ contract AssetManager is
         bytes memory data
     ) internal {
         require(amount >= 0, "Amount less than minimum amount");
-        IERC20(token).safeTransferFrom(msg.sender, address(this), amount);
+        IERC20(token).transferFrom(msg.sender, address(this), amount);
         sendDepositMessage(token, amount, to, data, msg.value);
     }
 
@@ -238,11 +246,11 @@ contract AssetManager is
             bool sent = payable(to).send(amount);
             require(sent, "Failed to send tokens");
         } else {
-            IERC20(token).safeTransfer(to, amount);
+            IERC20(token).transfer(to, amount);
         }
     }
 
-    function balanceOf(address token) internal returns (uint) {
+    function balanceOf(address token) internal view returns (uint) {
         if (token == NATIVE_ADDRESS) {
             return address(this).balance;
         }

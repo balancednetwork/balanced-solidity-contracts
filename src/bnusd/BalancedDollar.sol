@@ -129,7 +129,6 @@ contract BalancedDollar is ERC20Upgradeable, ICallServiceReceiver, UUPSUpgradeab
             (,string memory to) = message.to.parseNetworkAddress();
             _mint(to.parseAddress("Invalid account"), message.value);
         } else if (method.compareTo(Messages.CROSS_TRANSFER_REVERT)) {
-            require(from.compareTo(xCallNetworkAddress), "onlyCallService");
             Messages.XCrossTransferRevert memory message = data.decodeCrossTransferRevert();
             _mint(message.to, message.value);
         } else {

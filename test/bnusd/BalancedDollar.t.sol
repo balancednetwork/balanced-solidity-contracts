@@ -262,25 +262,6 @@ contract BalancedDollarTest is Test {
         assertEq(bnUSD.balanceOf(user), amount);
     }
 
-    function testReceiveCrossTransferRevert_onlyXCall() public {
-        // Arrange
-        vm.prank(address(xCall));
-        uint amount = 100;
-
-        Messages.XCrossTransferRevert memory message = Messages
-            .XCrossTransferRevert(user, amount);
-
-        // Assert
-        vm.expectRevert("onlyCallService");
-
-        // Act
-        bnUSD.handleCallMessage(
-            ICON_BNUSD,
-            message.encodeCrossTransferRevert(),
-            defaultSources
-        );
-    }
-
     function addTokens(address account, uint amount) public {
         vm.prank(address(xCall));
         Messages.XCrossTransfer memory message = Messages.XCrossTransfer(

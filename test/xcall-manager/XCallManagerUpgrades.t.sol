@@ -6,7 +6,7 @@ import "forge-std/console.sol";
 import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import "@openzeppelin/contracts/proxy/ERC1967/ERC1967Proxy.sol";
 
-import "@balanced/contracts/asset-manager/AssetManager.sol" ;
+import "@balanced/contracts/asset-manager/AssetManager.sol";
 import "@balanced/contracts/xcall-manager/XCallManager.sol" as Manager;
 import "@balanced/contracts/xcall-manager/Messages.sol" as ManagerMessages;
 import "@balanced/contracts/xcall-manager/RLPEncodeStruct.sol" as ManagerEncode;
@@ -49,22 +49,36 @@ contract XCallManagerTest is Test {
         );
         address xcallManagerAddress = address(new Manager.XCallManager());
         vm.startPrank(owner);
-        xCallManager = Manager.XCallManager(address(new ERC1967Proxy(xcallManagerAddress,  abi.encodeWithSelector(
-            xCallManager.initialize.selector,
-            address(xCall),
-            ICON_GOVERNANCE,
-            address(admin),
-            defaultSources,
-            defaultDestinations
-        ))));
+        xCallManager = Manager.XCallManager(
+            address(
+                new ERC1967Proxy(
+                    xcallManagerAddress,
+                    abi.encodeWithSelector(
+                        xCallManager.initialize.selector,
+                        address(xCall),
+                        ICON_GOVERNANCE,
+                        address(admin),
+                        defaultSources,
+                        defaultDestinations
+                    )
+                )
+            )
+        );
 
         address assetManagerAddress = address(new AssetManager());
-        assetManager = AssetManager(address(new ERC1967Proxy(assetManagerAddress,  abi.encodeWithSelector(
-            assetManager.initialize.selector,
-            address(xCall),
-            "iconAssetManager",
-            address(xCallManager)
-        ))));
+        assetManager = AssetManager(
+            address(
+                new ERC1967Proxy(
+                    assetManagerAddress,
+                    abi.encodeWithSelector(
+                        assetManager.initialize.selector,
+                        address(xCall),
+                        "iconAssetManager",
+                        address(xCallManager)
+                    )
+                )
+            )
+        );
         vm.stopPrank();
     }
 
@@ -74,14 +88,19 @@ contract XCallManagerTest is Test {
         xCallManager.transferOwnership(address(xCallManager));
         Manager.XCallManager newXCallManager = new Manager.XCallManager();
 
-        ManagerMessages.Messages.Execute memory upgradeMessage = ManagerMessages.Messages.Execute(
-            address(xCallManager),
-            abi.encodeWithSelector(
-                xCallManager.upgradeToAndCall.selector,
-                address(newXCallManager),
-                ""
-            )
-        );
+        ManagerMessages.Messages.Execute memory upgradeMessage = ManagerMessages
+            .Messages
+            .Execute(
+                address(xCallManager),
+                abi.encodeWithSelector(
+                    xCallManager.upgradeToAndCall.selector,
+                    address(newXCallManager),
+                    ""
+                )
+            );
+
+        vm.prank(admin);
+        xCallManager.whitelistAction(upgradeMessage.encodeExecute());
 
         // Assert
         vm.expectCall(
@@ -109,14 +128,19 @@ contract XCallManagerTest is Test {
         assetManager.transferOwnership(address(xCallManager));
         AssetManager newAssetManager = new AssetManager();
 
-        ManagerMessages.Messages.Execute memory upgradeMessage = ManagerMessages.Messages.Execute(
-            address(assetManager),
-            abi.encodeWithSelector(
-                assetManager.upgradeToAndCall.selector,
-                address(newAssetManager),
-                ""
-            )
-        );
+        ManagerMessages.Messages.Execute memory upgradeMessage = ManagerMessages
+            .Messages
+            .Execute(
+                address(assetManager),
+                abi.encodeWithSelector(
+                    assetManager.upgradeToAndCall.selector,
+                    address(newAssetManager),
+                    ""
+                )
+            );
+        vm.prank(admin);
+        xCallManager.whitelistAction(upgradeMessage.encodeExecute());
+
         // Assert
         vm.expectCall(
             address(assetManager),
@@ -136,5 +160,4 @@ contract XCallManagerTest is Test {
         );
         assertEq(assetManager.getImplementation(), address(newAssetManager));
     }
-
 }

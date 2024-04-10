@@ -467,7 +467,8 @@ contract AssetManagerTest is Test {
         );
 
         vm.warp(block.timestamp + 1001);
-
+        uint limit = assetManager.getWithdrawLimit(address(0));
+        assertEq(limit, 91 ether * 90 / 100);
         vm.prank(address(xCall));
         assetManager.handleCallMessage(
             ICON_ASSET_MANAGER,
