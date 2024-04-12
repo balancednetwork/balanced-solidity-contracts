@@ -87,14 +87,27 @@ contract AssetManager is
         currentLimit[token] = (balanceOf(token) * percentage[token]) / POINTS;
     }
 
+   function getWithdrawLimit(address token) external view returns (uint)  {
+        uint balance = balanceOf(token);
+        return calculateLimit(balance, token);
+    }
+
     function verifyWithdraw(address token, uint amount) internal {
+        uint balance = balanceOf(token);
+        uint limit = calculateLimit(balance, token);
+        require(balance - amount >= limit, "exceeds withdraw limit");
+
+        currentLimit[token] = limit;
+        lastUpdate[token] = block.timestamp;
+    }
+
+    function calculateLimit(uint balance, address token) internal view returns (uint) {
         uint _period = period[token];
         uint _percentage = percentage[token];
         if (_period == 0) {
-            return;
+            return 0;
         }
 
-        uint balance = balanceOf(token);
         uint maxLimit = (balance * _percentage) / POINTS;
         // The maximum amount that can be withdraw in one period
         uint maxWithdraw = balance - maxLimit;
@@ -107,11 +120,7 @@ contract AssetManager is
         // If the balance is below the limit then set limt to current balance (no withdraws are possible)
         limit = Math.min(balance, limit);
         // If limit goes below what the protected percentage is set it to the maxLimit
-        limit = Math.max(limit, maxLimit);
-        require(balance - amount >= limit, "exceeds withdraw limit");
-
-        currentLimit[token] = limit;
-        lastUpdate[token] = block.timestamp;
+        return  Math.max(limit, maxLimit);
     }
 
     function deposit(address token, uint amount) external payable {
@@ -244,7 +253,7 @@ contract AssetManager is
         }
     }
 
-    function balanceOf(address token) internal returns (uint) {
+    function balanceOf(address token) internal view returns (uint) {
         if (token == NATIVE_ADDRESS) {
             return address(this).balance;
         }
