@@ -35,6 +35,8 @@ contract XCallManager is IXCallManager, ICallServiceReceiver, UUPSUpgradeable, O
     string[] public sources;
     string[] public destinations;
 
+    mapping(bytes => bool) public whitelistedActions;
+
     function initialize(
         address _xCall,
         string memory _iconGovernance,
@@ -73,6 +75,14 @@ contract XCallManager is IXCallManager, ICallServiceReceiver, UUPSUpgradeable, O
         proposedProtocolToRemove = protocol;
     }
 
+    function whitelistAction(bytes memory action) external onlyAdmin {
+        whitelistedActions[action] = true;
+    }
+
+    function removeAction(bytes memory action) external onlyAdmin {
+        delete whitelistedActions[action];
+    }
+
     function setAdmin(address _admin) external onlyAdmin() {
         admin = _admin;
     }
@@ -102,7 +112,6 @@ contract XCallManager is IXCallManager, ICallServiceReceiver, UUPSUpgradeable, O
             "Only ICON Balanced governance is allowed"
         );
         string memory method = data.getMethod();
-
         if (!verifyProtocolsUnordered(protocols, sources)) {
             require(
                 method.compareTo(Messages.CONFIGURE_PROTOCOLS_NAME),
@@ -110,6 +119,9 @@ contract XCallManager is IXCallManager, ICallServiceReceiver, UUPSUpgradeable, O
             );
             verifyProtocolRecovery(protocols);
         }
+
+        require(whitelistedActions[data], "Actions in not whitelisted by admin");
+        delete whitelistedActions[data];
 
         if (method.compareTo(Messages.EXECUTE_NAME)) {
             Messages.Execute memory message = data.decodeExecute();
