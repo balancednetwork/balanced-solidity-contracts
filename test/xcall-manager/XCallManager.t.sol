@@ -93,6 +93,10 @@ contract XCallManagerTest is Test {
 
         string[] memory empty;
         assertFalse(xCallManager.verifyProtocols(empty));
+        deliverySources = [defaultSources[0], defaultSources[0]];
+        assertFalse(xCallManager.verifyProtocols(deliverySources));
+        deliverySources = [defaultSources[0]];
+        assertFalse(xCallManager.verifyProtocols(deliverySources));
     }
 
     function testSetAdmin_nonAdmin() public {
