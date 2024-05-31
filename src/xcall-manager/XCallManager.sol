@@ -95,7 +95,7 @@ contract XCallManager is IXCallManager, ICallServiceReceiver, UUPSUpgradeable, O
     function verifyProtocols(
         string[] calldata protocols
     ) external view returns (bool) {
-        return verifyProtocolsUnordered(protocols, sources);
+        return verifyProtocolsUnordered(sources, protocols);
     }
 
     function getProtocols() external view returns (Protocols memory) {
@@ -112,7 +112,7 @@ contract XCallManager is IXCallManager, ICallServiceReceiver, UUPSUpgradeable, O
             "Only ICON Balanced governance is allowed"
         );
         string memory method = data.getMethod();
-        if (!verifyProtocolsUnordered(protocols, sources)) {
+        if (!verifyProtocolsUnordered(sources, protocols)) {
             require(
                 method.compareTo(Messages.CONFIGURE_PROTOCOLS_NAME),
                 "Protocol Mismatch"
