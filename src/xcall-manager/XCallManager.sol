@@ -37,6 +37,10 @@ contract XCallManager is IXCallManager, ICallServiceReceiver, UUPSUpgradeable, O
 
     mapping(bytes => bool) public whitelistedActions;
 
+    constructor() {
+        _disableInitializers();
+    }
+
     function initialize(
         address _xCall,
         string memory _iconGovernance,
@@ -145,23 +149,22 @@ contract XCallManager is IXCallManager, ICallServiceReceiver, UUPSUpgradeable, O
         );
     }
 
+    // Verifies that all required protocols exists in the protocols used for delivery.
     function verifyProtocolsUnordered(
-        string[] memory array1,
-        string[] memory array2
+        string[] memory requiredProtocols,
+        string[] memory deliveryProtocols
     ) internal pure returns (bool) {
         // Check if the arrays have the same length
-        if (array1.length != array2.length) {
+        if (requiredProtocols.length != deliveryProtocols.length) {
             return false;
         }
 
-        for (uint i = 0; i < array1.length; i++) {
-            for (uint j = 0; j < array2.length; j++) {
-                if (array1[i].compareTo(array2[j])) {
+        for (uint i = 0; i < requiredProtocols.length; i++) {
+            for (uint j = 0; j < deliveryProtocols.length; j++) {
+                if (requiredProtocols[i].compareTo(deliveryProtocols[j])) {
                     break;
-                } else {
-                    if (j == array2.length - 1) return false;
-                    continue;
                 }
+                if  (j == deliveryProtocols.length - 1) return false;
             }
         }
 
