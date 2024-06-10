@@ -16,7 +16,12 @@ import "./RLPEncodeStruct.sol";
 import "./RLPDecodeStruct.sol";
 import "../lib/interfaces/IXCallManager.sol";
 
-contract XCallManager is IXCallManager, ICallServiceReceiver, UUPSUpgradeable, OwnableUpgradeable {
+contract XCallManager is
+    IXCallManager,
+    ICallServiceReceiver,
+    UUPSUpgradeable,
+    OwnableUpgradeable
+{
     using Strings for string;
     using NetworkAddress for string;
     using ParseAddress for address;
@@ -52,8 +57,7 @@ contract XCallManager is IXCallManager, ICallServiceReceiver, UUPSUpgradeable, O
         xCallNetworkAddress = ICallService(xCall).getNetworkAddress();
         iconGovernance = _iconGovernance;
         admin = _admin;
-        sources = _sources;
-        destinations = _destinations;
+        _setProtocols(_sources, _destinations);
         __Ownable_init(msg.sender);
     }
 
@@ -87,11 +91,29 @@ contract XCallManager is IXCallManager, ICallServiceReceiver, UUPSUpgradeable, O
         delete whitelistedActions[action];
     }
 
-    function setAdmin(address _admin) external onlyAdmin() {
+    function setAdmin(address _admin) external onlyAdmin {
         admin = _admin;
     }
 
-    function setProtocols(string[] memory _sources, string[] memory _destinations) external onlyOwner() {
+    function setProtocols(
+        string[] memory _sources,
+        string[] memory _destinations
+    ) external onlyOwner {
+        _setProtocols(_sources, _destinations);
+    }
+
+    function _setProtocols(
+        string[] memory _sources,
+        string[] memory _destinations
+    ) internal {
+        require(
+            !hasDuplicates(_sources),
+            "Source protcols cannot contain duplicates"
+        );
+        require(
+            !hasDuplicates(_destinations),
+            "Destination protcols cannot contain duplicates"
+        );
         sources = _sources;
         destinations = _destinations;
     }
@@ -124,7 +146,10 @@ contract XCallManager is IXCallManager, ICallServiceReceiver, UUPSUpgradeable, O
             verifyProtocolRecovery(protocols);
         }
 
-        require(whitelistedActions[data], "Actions in not whitelisted by admin");
+        require(
+            whitelistedActions[data],
+            "Actions in not whitelisted by admin"
+        );
         delete whitelistedActions[data];
 
         if (method.compareTo(Messages.EXECUTE_NAME)) {
@@ -164,16 +189,46 @@ contract XCallManager is IXCallManager, ICallServiceReceiver, UUPSUpgradeable, O
                 if (requiredProtocols[i].compareTo(deliveryProtocols[j])) {
                     break;
                 }
-                if  (j == deliveryProtocols.length - 1) return false;
+                if (j == deliveryProtocols.length - 1) return false;
             }
         }
 
         return true;
     }
 
+    function hasDuplicates(string[] memory arr) internal pure returns (bool) {
+        for (uint i = 0; i < arr.length; i++) {
+            for (uint j = i + 1; j < arr.length; j++) {
+                if (
+                    keccak256(abi.encodePacked(arr[i])) ==
+                    keccak256(abi.encodePacked(arr[j]))
+                ) {
+                    return true;
+                }
+            }
+        }
+        return false;
+    }
+
+    function contains(
+        string memory item,
+        string[] memory arr
+    ) internal pure returns (bool) {
+        for (uint i = 0; i < arr.length; i++) {
+            if (
+                keccak256(abi.encodePacked(arr[i])) ==
+                keccak256(abi.encodePacked(item))
+            ) {
+                return true;
+            }
+        }
+        return false;
+    }
+
     function getModifiedProtocols() internal view returns (string[] memory) {
         require(
-            bytes(proposedProtocolToRemove).length != 0,
+            bytes(proposedProtocolToRemove).length != 0 &&
+            contains(proposedProtocolToRemove, sources),
             "No proposal for removal exists"
         );
 
