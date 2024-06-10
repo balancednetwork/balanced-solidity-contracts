@@ -27,6 +27,7 @@ contract XCallManager is IXCallManager, ICallServiceReceiver, UUPSUpgradeable, O
 
     address public xCall;
     address public admin;
+    address private proposedAdmin;
     string private xCallNetworkAddress;
     string public iconGovernance;
 
@@ -83,8 +84,15 @@ contract XCallManager is IXCallManager, ICallServiceReceiver, UUPSUpgradeable, O
         delete whitelistedActions[action];
     }
 
-    function setAdmin(address _admin) external onlyAdmin() {
-        admin = _admin;
+    function setAdmin(address _newAdmin) external onlyAdmin() {
+        require(_newAdmin != address(0), "New admin cannot be the zero address");
+        proposedAdmin = _newAdmin;
+    }
+
+    function acceptAdminRole() external {
+        require(msg.sender == proposedAdmin, "Caller is not the proposed admin");
+        admin = proposedAdmin;
+        proposedAdmin = address(0);
     }
 
     function setProtocols(string[] memory _sources, string[] memory _destinations) external onlyOwner() {

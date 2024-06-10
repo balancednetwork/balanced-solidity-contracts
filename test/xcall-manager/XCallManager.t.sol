@@ -117,6 +117,17 @@ contract XCallManagerTest is Test {
         // Act
         xCallManager.setAdmin(user);
 
+        assertEq(xCallManager.admin(), admin);
+
+        //Assert
+        vm.expectRevert("Caller is not the proposed admin");
+
+        xCallManager.acceptAdminRole();
+
+        vm.prank(user);
+
+        xCallManager.acceptAdminRole();
+
         // Assert
         assertEq(xCallManager.admin(), user);
     }
