@@ -44,7 +44,13 @@ contract AssetManager is
     mapping(address => uint) public lastUpdate;
     mapping(address => uint) public currentLimit;
 
-    uint private constant POINTS = 10000;
+    uint private constant POINTS = 10_000;
+    uint private constant DAY_IN_SECONDS = 86_400;
+
+    constructor() {
+        _disableInitializers();
+    }
+
     function initialize(
         address _xCall,
         string memory _iconAssetManager,
@@ -76,6 +82,7 @@ contract AssetManager is
         uint _percentage
     ) external onlyOwner {
         require(_percentage <= POINTS,"Percentage should be less than or equal to POINTS");
+        require(_period <= DAY_IN_SECONDS*30, "Period should be less than or equal to 30 days");
 
         period[token] = _period;
         percentage[token] = _percentage;
@@ -166,7 +173,7 @@ contract AssetManager is
         string memory to,
         bytes memory data
     ) internal {
-        require(amount >= 0, "Amount less than minimum amount");
+        require(amount > 0, "Amount less than minimum amount");
         IERC20(token).safeTransferFrom(msg.sender, address(this), amount);
         sendDepositMessage(token, amount, to, data, msg.value);
     }

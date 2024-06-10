@@ -35,6 +35,11 @@ contract BalancedDollar is ERC20Upgradeable, ICallServiceReceiver, UUPSUpgradeab
 
     string private constant NAME = "Balanced Dollar";
     string private constant SYMBOL = "bnUSD";
+
+    constructor() {
+        _disableInitializers();
+    }
+
     function initialize(
         address _xCall,
         string memory _iconBnUSD,
