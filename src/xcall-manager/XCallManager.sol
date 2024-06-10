@@ -27,7 +27,6 @@ contract XCallManager is IXCallManager, ICallServiceReceiver, UUPSUpgradeable, O
 
     address public xCall;
     address public admin;
-    address private proposedAdmin;
     string private xCallNetworkAddress;
     string public iconGovernance;
 
@@ -37,6 +36,8 @@ contract XCallManager is IXCallManager, ICallServiceReceiver, UUPSUpgradeable, O
     string[] public destinations;
 
     mapping(bytes => bool) public whitelistedActions;
+
+    address private proposedAdmin;
 
     function initialize(
         address _xCall,
