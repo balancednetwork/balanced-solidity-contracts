@@ -32,7 +32,6 @@ contract XCallManager is
 
     address public xCall;
     address public admin;
-    address private proposedAdmin;
     string private xCallNetworkAddress;
     string public iconGovernance;
 
@@ -43,7 +42,9 @@ contract XCallManager is
 
     mapping(bytes => bool) public whitelistedActions;
 
-    event ProtocolProposed(string indexed protocol);
+    address private proposedAdmin;
+
+        event ProtocolProposed(string indexed protocol);
     event ProtocolRemoved(string indexed protocol);
     event ActionWhitelisted(bytes indexed action);
     event ActionRemoved(bytes indexed action);
