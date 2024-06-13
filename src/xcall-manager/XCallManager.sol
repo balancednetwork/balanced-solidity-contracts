@@ -62,6 +62,7 @@ contract XCallManager is
         string[] memory _sources,
         string[] memory _destinations
     ) public initializer {
+        require(_xCall != address(0) && _admin != address(0), "Zero address not allowed");
         xCall = _xCall;
         xCallNetworkAddress = ICallService(xCall).getNetworkAddress();
         iconGovernance = _iconGovernance;
