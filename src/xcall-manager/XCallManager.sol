@@ -42,6 +42,8 @@ contract XCallManager is
 
     mapping(bytes => bool) public whitelistedActions;
 
+    address private proposedAdmin;
+
     constructor() {
         _disableInitializers();
     }
@@ -91,8 +93,15 @@ contract XCallManager is
         delete whitelistedActions[action];
     }
 
-    function setAdmin(address _admin) external onlyAdmin {
-        admin = _admin;
+    function setAdmin(address _newAdmin) external onlyAdmin() {
+        require(_newAdmin != address(0), "New admin cannot be the zero address");
+        proposedAdmin = _newAdmin;
+    }
+
+    function acceptAdminRole() external {
+        require(msg.sender == proposedAdmin, "Caller is not the proposed admin");
+        admin = proposedAdmin;
+        proposedAdmin = address(0);
     }
 
     function setProtocols(

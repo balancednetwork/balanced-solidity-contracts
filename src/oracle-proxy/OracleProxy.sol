@@ -28,7 +28,7 @@ contract OracleProxy is UUPSUpgradeable, OwnableUpgradeable {
     uint private constant MICROSECONDS_IN_SECONDS = 1_000_000;
 
 
-    constructor() public {
+    constructor() {
         _disableInitializers();
     }
 
