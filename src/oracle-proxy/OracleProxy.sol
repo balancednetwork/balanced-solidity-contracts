@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: Apache-2.0
-pragma solidity >=0.8.0;
+pragma solidity ^0.8.25;
 
 import "forge-std/console.sol";
 import "forge-std/interfaces/IERC20.sol";
@@ -26,7 +26,6 @@ contract OracleProxy is UUPSUpgradeable, OwnableUpgradeable {
     mapping(address => bool) public creditVaults;
 
     uint private constant MICROSECONDS_IN_SECONDS = 1_000_000;
-
 
     constructor() public {
         _disableInitializers();

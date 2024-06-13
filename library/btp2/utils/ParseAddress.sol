@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: Apache-2.0
-pragma solidity >=0.8.0;
+pragma solidity ^0.8.25;
 
 /*
  * Utility library of inline functions on addresses
