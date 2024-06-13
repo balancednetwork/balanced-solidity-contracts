@@ -47,6 +47,11 @@ contract AssetManager is
     uint private constant POINTS = 10_000;
     uint private constant DAY_IN_SECONDS = 86_400;
 
+    event RateLimitConfigured(address indexed token, uint period, uint percentage);
+    event ResetLimit(address indexed token);
+    event AssetDeposited(address indexed token, uint amount);
+
+
     constructor() {
         _disableInitializers();
     }
@@ -88,10 +93,14 @@ contract AssetManager is
         percentage[token] = _percentage;
         lastUpdate[token] = block.timestamp;
         currentLimit[token] = (balanceOf(token) * _percentage) / POINTS;
+
+        emit RateLimitConfigured(token, _period, _percentage);
     }
 
     function resetLimit(address token) external onlyOwner {
         currentLimit[token] = (balanceOf(token) * percentage[token]) / POINTS;
+
+        emit ResetLimit(token);
     }
 
    function getWithdrawLimit(address token) external view returns (uint)  {
@@ -217,6 +226,8 @@ contract AssetManager is
             protocols.sources,
             protocols.destinations
         );
+
+        emit AssetDeposited(token, amount);
     }
 
     function handleCallMessage(
