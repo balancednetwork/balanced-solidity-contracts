@@ -279,6 +279,30 @@ contract XCallManagerTest is Test {
         );
     }
 
+    function testConfigureProtocols_withProposal_doesNotContain() public {
+        // Arrange
+        newSources = ["0x045", "0x046"];
+        newDestinations = ["cx35", "cx36"];
+        deliverySources = [defaultSources[0]];
+
+        Messages.ConfigureProtocols memory configureProtocolsMessage = Messages
+            .ConfigureProtocols(newSources, newDestinations);
+
+        vm.prank(address(admin));
+        xCallManager.proposeRemoval("0x47");
+
+        // Assert
+        vm.expectRevert("No proposal for removal exists");
+
+        // Act
+        vm.prank(address(xCall));
+        xCallManager.handleCallMessage(
+            ICON_GOVERNANCE,
+            configureProtocolsMessage.encodeConfigureProtocols(),
+            deliverySources
+        );
+    }
+
     function testConfigureProtocols_withProposal() public {
         // Arrange
         newSources = ["0x045", "0x046"];
@@ -347,6 +371,26 @@ contract XCallManagerTest is Test {
         // Act
         vm.prank(user);
         xCallManager.setProtocols(newSources, newDestinations);
+    }
+
+    function testSetProtocols_duplicates() public {
+        // Arrange
+        newSources = ["0x045", "0x045"];
+        newDestinations = ["cx35", "cx36"];
+
+        // Assert
+        vm.expectRevert("Source protcols cannot contain duplicates");
+
+        // Act
+        vm.prank(owner);
+        xCallManager.setProtocols(newSources, newDestinations);
+
+        // Assert
+        vm.expectRevert("Destination protcols cannot contain duplicates");
+
+        // Act
+        vm.prank(owner);
+        xCallManager.setProtocols(newDestinations, newSources);
     }
 
     function testUpgrade_notOwner() public {
