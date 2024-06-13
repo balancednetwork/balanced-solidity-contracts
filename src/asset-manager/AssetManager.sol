@@ -56,6 +56,7 @@ contract AssetManager is
         string memory _iconAssetManager,
         address _xCallManager
     ) public initializer {
+        require(_xCall != address(0) || _xCallManager != address(0), "Zero address not allowed");
         xCall = _xCall;
         xCallNetworkAddress = ICallService(xCall).getNetworkAddress();
         iconAssetManager = _iconAssetManager;
