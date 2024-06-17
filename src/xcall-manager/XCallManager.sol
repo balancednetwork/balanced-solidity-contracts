@@ -41,8 +41,16 @@ contract XCallManager is
     string[] public destinations;
 
     mapping(bytes => bool) public whitelistedActions;
-
+    
     address private proposedAdmin;
+
+    event ProtocolProposed(string indexed protocol);
+    event ProtocolRemoved(string indexed protocol);
+    event ActionWhitelisted(bytes indexed action);
+    event ActionRemoved(bytes indexed action);
+    event AdminTransferred(address indexed newAdmin);
+    event ProtocolsConfigured(string[] sources, string[] destinations);
+
 
     constructor() {
         _disableInitializers();
@@ -84,14 +92,17 @@ contract XCallManager is
 
     function proposeRemoval(string memory protocol) external onlyAdmin {
         proposedProtocolToRemove = protocol;
+        emit ProtocolProposed(protocol);
     }
 
     function whitelistAction(bytes memory action) external onlyAdmin {
         whitelistedActions[action] = true;
+        emit ActionWhitelisted(action);
     }
 
     function removeAction(bytes memory action) external onlyAdmin {
         delete whitelistedActions[action];
+        emit ActionRemoved(action);
     }
 
     function setAdmin(address _newAdmin) external onlyAdmin() {
@@ -103,6 +114,7 @@ contract XCallManager is
         require(msg.sender == proposedAdmin, "Caller is not the proposed admin");
         admin = proposedAdmin;
         proposedAdmin = address(0);
+        emit AdminTransferred(_admin);
     }
 
     function setProtocols(
@@ -126,6 +138,9 @@ contract XCallManager is
         );
         sources = _sources;
         destinations = _destinations;
+
+        emit ProtocolsConfigured(_sources, _destinations);
+
     }
 
     function verifyProtocols(
