@@ -4,6 +4,7 @@ pragma solidity ^0.8.13;
 import "forge-std/Test.sol";
 import "forge-std/console.sol";
 import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
+import "@openzeppelin/contracts/token/ERC20/ERC20.sol";
 
 import "@balanced/contracts/asset-manager/AssetManager.sol";
 import "@balanced/contracts/asset-manager/Messages.sol";
@@ -16,6 +17,15 @@ import "@iconfoundation/xcall-solidity-library/interfaces/ICallService.sol";
 import "@iconfoundation/xcall-solidity-library/utils/NetworkAddress.sol";
 import "@iconfoundation/xcall-solidity-library/utils/Strings.sol";
 import "@iconfoundation/xcall-solidity-library/utils/ParseAddress.sol";
+
+contract TokenContract is ERC20 {
+    constructor(string memory name, string memory symbol) ERC20(name, symbol) {}
+
+    function mint(address account, uint256 amount) public virtual returns (bool) {
+        _mint(account, amount);
+        return true;
+    }
+}
 
 contract AssetManagerTest is Test {
     using Strings for string;
@@ -31,7 +41,7 @@ contract AssetManagerTest is Test {
     AssetManager public assetManager;
     IXCallManager public xCallManager;
     ICallService public xCall;
-    IERC20 public token;
+    TokenContract public token;
     string public constant nid = "0x1.eth";
     string public constant ICON_ASSET_MANAGER = "0x1.icon/cx1";
     string[] defaultSources = ["0x05", "0x06"];
@@ -40,7 +50,13 @@ contract AssetManagerTest is Test {
     function setUp() public {
         xCall = ICallService(address(0x01));
         xCallManager = IXCallManager(address(0x02));
-        token = IERC20(address(0x3));
+        token = new TokenContract(
+            "TestToken",
+            "TST"
+        );
+
+        token.mint(user, 1000);
+
         vm.mockCall(
             address(xCall),
             abi.encodeWithSelector(xCall.getNetworkAddress.selector),
@@ -91,25 +107,23 @@ contract AssetManagerTest is Test {
         uint256 fee = 10 ether;
         vm.deal(user, fee);
         vm.prank(user);
+        token.approve(address(assetManager), amount);
+
+        vm.prank(user);
 
         Messages.Deposit memory xcallMessage = Messages.Deposit(
             address(token).toString(),
             address(user).toString(),
             "",
-            0,
+            amount,
             ""
         );
         Messages.DepositRevert memory rollback = Messages.DepositRevert(
             address(token),
-            0,
+            amount,
             address(user)
         );
 
-        vm.mockCall(
-            address(token),
-            abi.encodeWithSelector(token.transferFrom.selector),
-            abi.encode(1)
-        );
         vm.mockCall(
             address(xCall),
             fee,
@@ -117,16 +131,6 @@ contract AssetManagerTest is Test {
             abi.encode(0)
         );
 
-        // Assert
-        vm.expectCall(
-            address(token),
-            abi.encodeWithSelector(
-                token.transferFrom.selector,
-                address(user),
-                address(assetManager),
-                amount
-            )
-        );
         vm.expectCall(
             address(xCall),
             fee,
@@ -196,26 +200,25 @@ contract AssetManagerTest is Test {
         uint256 fee = 10 ether;
         string memory to = "0x1.icon/hx4";
         vm.deal(user, fee);
+
+        vm.prank(user);
+        token.approve(address(assetManager), amount);
+
         vm.prank(user);
 
         Messages.Deposit memory xcallMessage = Messages.Deposit(
             address(token).toString(),
             address(user).toString(),
             to,
-            0,
+            amount,
             ""
         );
         Messages.DepositRevert memory rollback = Messages.DepositRevert(
             address(token),
-            0,
+            amount,
             address(user)
         );
 
-        vm.mockCall(
-            address(token),
-            abi.encodeWithSelector(token.transferFrom.selector),
-            abi.encode(1)
-        );
         vm.mockCall(
             address(xCall),
             fee,
@@ -223,16 +226,6 @@ contract AssetManagerTest is Test {
             abi.encode(0)
         );
 
-        // Assert
-        vm.expectCall(
-            address(token),
-            abi.encodeWithSelector(
-                token.transferFrom.selector,
-                address(user),
-                address(assetManager),
-                amount
-            )
-        );
         vm.expectCall(
             address(xCall),
             fee,
@@ -258,25 +251,21 @@ contract AssetManagerTest is Test {
         bytes memory data = "swap";
         vm.deal(user, fee);
         vm.prank(user);
+        token.approve(address(assetManager), amount);
 
         Messages.Deposit memory xcallMessage = Messages.Deposit(
             address(token).toString(),
             address(user).toString(),
             to,
-            0,
+            amount,
             data
         );
         Messages.DepositRevert memory rollback = Messages.DepositRevert(
             address(token),
-            0,
+            amount,
             address(user)
         );
 
-        vm.mockCall(
-            address(token),
-            abi.encodeWithSelector(token.transferFrom.selector),
-            abi.encode(1)
-        );
         vm.mockCall(
             address(xCall),
             fee,
@@ -284,22 +273,6 @@ contract AssetManagerTest is Test {
             abi.encode(0)
         );
 
-        vm.mockCall(
-            address(token),
-            abi.encodeWithSelector(token.balanceOf.selector),
-            abi.encode(amount)
-        );
-
-        // Assert
-        vm.expectCall(
-            address(token),
-            abi.encodeWithSelector(
-                token.transferFrom.selector,
-                address(user),
-                address(assetManager),
-                amount
-            )
-        );
         vm.expectCall(
             address(xCall),
             fee,
@@ -312,7 +285,7 @@ contract AssetManagerTest is Test {
                 defaultDestinations
             )
         );
-
+        vm.prank(user);
         // Act
         assetManager.deposit{value: fee}(address(token), amount, to, data);
     }
@@ -361,10 +334,13 @@ contract AssetManagerTest is Test {
         );
     }
 
-    function testWithdrawTo() public {
+    function testWithdrawTom() public {
         // Arrange
-        vm.prank(address(xCall));
         uint amount = 100;
+        vm.prank(address(user));
+        token.transfer(address(assetManager), amount);
+
+        vm.prank(address(xCall));
         vm.mockCall(
             address(token),
             abi.encodeWithSelector(token.transfer.selector),
@@ -374,16 +350,6 @@ contract AssetManagerTest is Test {
             address(token).toString(),
             address(user).toString(),
             amount
-        );
-
-        // Assert
-        vm.expectCall(
-            address(token),
-            abi.encodeWithSelector(
-                token.transfer.selector,
-                address(user),
-                amount
-            )
         );
 
         // Act
@@ -602,8 +568,11 @@ contract AssetManagerTest is Test {
 
     function testDepositRollback() public {
         // Arrange
-        vm.prank(address(xCall));
         uint amount = 100;
+        vm.prank(address(user));
+        token.transfer(address(assetManager), amount);
+        
+        vm.prank(address(xCall));
         vm.mockCall(
             address(token),
             abi.encodeWithSelector(token.transfer.selector),
