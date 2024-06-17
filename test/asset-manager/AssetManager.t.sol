@@ -27,6 +27,45 @@ contract TokenContract is ERC20 {
     }
 }
 
+contract FeeOnTransferToken is ERC20 {
+    uint256 public transferFeePercentage = 10;
+    constructor(string memory name, string memory symbol) ERC20(name, symbol) {}
+
+    function mint(address account, uint256 amount) public virtual returns (bool) {
+        _mint(account, amount);
+        return true;
+    }
+
+    function transfer(
+        address to,
+        uint256 value
+    ) public override returns (bool) {
+        uint256 fee = (value * transferFeePercentage) / 100;
+        uint256 amountAfterFee = value - fee;
+
+        super._transfer(msg.sender, address(this), fee);
+        super._transfer(msg.sender, to, amountAfterFee);
+        return true;
+    }
+
+
+    function transferFrom(
+        address from,
+        address to,
+        uint256 value
+    ) public override returns (bool) {
+        address spender = msg.sender;
+        uint256 fee = (value * transferFeePercentage) / 100;
+        uint256 amountAfterFee = value - fee;
+        console.log("transferFrom", from, to);
+        _spendAllowance(from, spender, value);
+
+        super._transfer(from, address(this), fee);
+        super._transfer(from, to, amountAfterFee);
+        return true;
+    }
+}
+
 contract AssetManagerTest is Test {
     using Strings for string;
     using NetworkAddress for string;
@@ -42,10 +81,12 @@ contract AssetManagerTest is Test {
     IXCallManager public xCallManager;
     ICallService public xCall;
     TokenContract public token;
+    FeeOnTransferToken public feeOnTransferToken;
     string public constant nid = "0x1.eth";
     string public constant ICON_ASSET_MANAGER = "0x1.icon/cx1";
     string[] defaultSources = ["0x05", "0x06"];
     string[] defaultDestinations = ["cx2", "cx3"];
+    uint feeOnTransferPercentage = 10;
 
     function setUp() public {
         xCall = ICallService(address(0x01));
@@ -54,6 +95,15 @@ contract AssetManagerTest is Test {
             "TestToken",
             "TST"
         );
+
+        feeOnTransferToken = new FeeOnTransferToken(
+            "FeeOnTransferToken",
+            "FOT"
+        );
+
+        feeOnTransferToken.mint(user, 1000);
+
+        console.log("feeOnTransferToken", feeOnTransferToken.balanceOf(user));
 
         token.mint(user, 1000);
 
@@ -334,7 +384,7 @@ contract AssetManagerTest is Test {
         );
     }
 
-    function testWithdrawTom() public {
+    function testWithdrawTo() public {
         // Arrange
         uint amount = 100;
         vm.prank(address(user));
@@ -571,7 +621,7 @@ contract AssetManagerTest is Test {
         uint amount = 100;
         vm.prank(address(user));
         token.transfer(address(assetManager), amount);
-        
+
         vm.prank(address(xCall));
         vm.mockCall(
             address(token),
@@ -669,4 +719,87 @@ contract AssetManagerTest is Test {
         // Assert
         assertEq(assetManagerAddress, assetManager.getImplementation());
     }
+
+     function testDeposit_feeOnToken() public {
+        // Arrange
+        uint amount = 100;
+        uint256 fee = 10 ether;
+        string memory to = "0x1.icon/cx5";
+        bytes memory data = "swap";
+        vm.deal(user, fee);
+        vm.prank(user);
+        feeOnTransferToken.approve(address(assetManager), amount);
+
+        uint amountAfterTransfer = amount - (amount*feeOnTransferPercentage)/100;
+
+        Messages.Deposit memory xcallMessage = Messages.Deposit(
+            address(feeOnTransferToken).toString(),
+            address(user).toString(),
+            to,
+            amountAfterTransfer,
+            data
+        );
+        Messages.DepositRevert memory rollback = Messages.DepositRevert(
+            address(feeOnTransferToken),
+            amountAfterTransfer,
+            address(user)
+        );
+
+        vm.mockCall(
+            address(xCall),
+            fee,
+            abi.encodeWithSelector(xCall.sendCallMessage.selector),
+            abi.encode(0)
+        );
+
+        vm.expectCall(
+            address(xCall),
+            fee,
+            abi.encodeWithSelector(
+                xCall.sendCallMessage.selector,
+                ICON_ASSET_MANAGER,
+                xcallMessage.encodeDeposit(),
+                rollback.encodeDepositRevert(),
+                defaultSources,
+                defaultDestinations
+            )
+        );
+        vm.prank(user);
+        // Act
+        assetManager.deposit{value: fee}(address(feeOnTransferToken), 100, to, data);
+    }
+
+
+    function testWithdrawTo_feeOnTransfer() public {
+        // Arrange
+        uint amount = 100;
+        vm.prank(address(user));
+        feeOnTransferToken.transfer(address(assetManager), 1000);
+
+
+        Messages.WithdrawTo memory withdrawToMessage = Messages.WithdrawTo(
+            address(feeOnTransferToken).toString(),
+            address(user).toString(),
+            amount
+        );
+
+        uint userBalanceBefore = feeOnTransferToken.balanceOf(user);
+
+        vm.prank(address(xCall));
+        // Act
+        assetManager.handleCallMessage(
+            ICON_ASSET_MANAGER,
+            withdrawToMessage.encodeWithdrawTo(),
+            defaultSources
+        );
+
+        uint userBalaceAfter = feeOnTransferToken.balanceOf(user);
+
+        uint amountAfterTransfer = amount - (amount*feeOnTransferPercentage)/100;        
+
+        assertEq(userBalanceBefore + amountAfterTransfer, userBalaceAfter);
+
+
+    }
+
 }
