@@ -102,6 +102,7 @@ contract AssetManager is
     function verifyWithdraw(address token, uint amount) internal {
         uint balance = balanceOf(token);
         uint limit = calculateLimit(balance, token);
+        console.log("balance: ", balance,  limit);
         require(balance - amount >= limit, "exceeds withdraw limit");
 
         currentLimit[token] = limit;
