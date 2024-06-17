@@ -149,7 +149,6 @@ contract AssetManager is
         uint amount,
         string memory to
     ) external payable {
-        console.log("to: ", to);
         _deposit(token, amount, to, "");
     }
 
@@ -186,10 +185,8 @@ contract AssetManager is
     ) internal {
         require(amount > 0, "Amount less than minimum amount");
         uint256 balanceBefore = balanceOf(token);
-        console.log("balanceBefore: ", balanceBefore);
         IERC20(token).safeTransferFrom(msg.sender, address(this), amount);
         uint256 balanceAfter = balanceOf(token);
-        console.log("balanceBefore: ", balanceAfter);
         amount = balanceAfter - balanceBefore;
         sendDepositMessage(token, amount, to, data, msg.value);
     }
