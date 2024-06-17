@@ -45,6 +45,7 @@ contract BalancedDollar is ERC20Upgradeable, ICallServiceReceiver, UUPSUpgradeab
         string memory _iconBnUSD,
         address _xCallManager
     ) public initializer {
+        require(_xCall != address(0) || _xCallManager != address(0), "Zero address not allowed");
         xCall = _xCall;
         xCallNetworkAddress = ICallService(xCall).getNetworkAddress();
         nid = xCallNetworkAddress.nid();

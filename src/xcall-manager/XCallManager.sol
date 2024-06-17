@@ -41,6 +41,8 @@ contract XCallManager is
     string[] public destinations;
 
     mapping(bytes => bool) public whitelistedActions;
+    
+    address private proposedAdmin;
 
     event ProtocolProposed(string indexed protocol);
     event ProtocolRemoved(string indexed protocol);
@@ -48,6 +50,7 @@ contract XCallManager is
     event ActionRemoved(bytes indexed action);
     event AdminTransferred(address indexed newAdmin);
     event ProtocolsConfigured(string[] sources, string[] destinations);
+
 
     constructor() {
         _disableInitializers();
@@ -60,6 +63,7 @@ contract XCallManager is
         string[] memory _sources,
         string[] memory _destinations
     ) public initializer {
+        require(_xCall != address(0) && _admin != address(0), "Zero address not allowed");
         xCall = _xCall;
         xCallNetworkAddress = ICallService(xCall).getNetworkAddress();
         iconGovernance = _iconGovernance;
@@ -101,8 +105,15 @@ contract XCallManager is
         emit ActionRemoved(action);
     }
 
-    function setAdmin(address _admin) external onlyAdmin {
-        admin = _admin;
+    function setAdmin(address _newAdmin) external onlyAdmin() {
+        require(_newAdmin != address(0), "New admin cannot be the zero address");
+        proposedAdmin = _newAdmin;
+    }
+
+    function acceptAdminRole() external {
+        require(msg.sender == proposedAdmin, "Caller is not the proposed admin");
+        admin = proposedAdmin;
+        proposedAdmin = address(0);
         emit AdminTransferred(_admin);
     }
 
