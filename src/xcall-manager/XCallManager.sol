@@ -113,6 +113,7 @@ contract XCallManager is
         require(msg.sender == proposedAdmin, "Caller is not the proposed admin");
         admin = proposedAdmin;
         proposedAdmin = address(0);
+        emit AdminTransferred(admin);
     }
 
     function setProtocols(
