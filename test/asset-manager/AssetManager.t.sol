@@ -96,12 +96,12 @@ contract AssetManagerTest is Test {
             address(token).toString(),
             address(user).toString(),
             "",
-            amount,
+            0,
             ""
         );
         Messages.DepositRevert memory rollback = Messages.DepositRevert(
             address(token),
-            amount,
+            0,
             address(user)
         );
 
@@ -202,12 +202,12 @@ contract AssetManagerTest is Test {
             address(token).toString(),
             address(user).toString(),
             to,
-            amount,
+            0,
             ""
         );
         Messages.DepositRevert memory rollback = Messages.DepositRevert(
             address(token),
-            amount,
+            0,
             address(user)
         );
 
@@ -263,12 +263,12 @@ contract AssetManagerTest is Test {
             address(token).toString(),
             address(user).toString(),
             to,
-            amount,
+            0,
             data
         );
         Messages.DepositRevert memory rollback = Messages.DepositRevert(
             address(token),
-            amount,
+            0,
             address(user)
         );
 
@@ -282,6 +282,12 @@ contract AssetManagerTest is Test {
             fee,
             abi.encodeWithSelector(xCall.sendCallMessage.selector),
             abi.encode(0)
+        );
+
+        vm.mockCall(
+            address(token),
+            abi.encodeWithSelector(token.balanceOf.selector),
+            abi.encode(amount)
         );
 
         // Assert
