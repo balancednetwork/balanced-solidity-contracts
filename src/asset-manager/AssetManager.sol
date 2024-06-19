@@ -118,26 +118,28 @@ contract AssetManager is
         lastUpdate[token] = block.timestamp;
     }
 
-    function calculateLimit(uint balance, address token) internal view returns (uint) {
+     function calculateLimit(uint balance, address token) internal view returns (uint) {
         uint _period = period[token];
         uint _percentage = percentage[token];
         if (_period == 0) {
             return 0;
         }
 
-        uint maxLimit = (balance * _percentage) / POINTS;
+        uint minReserve = (balance * _percentage) / POINTS;
         // The maximum amount that can be withdraw in one period
-        uint maxWithdraw = balance - maxLimit;
+        uint maxWithdraw = balance - minReserve;
         uint timeDiff = block.timestamp - lastUpdate[token];
         timeDiff = Math.min(timeDiff, _period);
 
-        // The amount that should be added as availbe
-        uint addedAllowedWithdrawal = (maxWithdraw * timeDiff) / _period;
-        uint limit = currentLimit[token] - addedAllowedWithdrawal;
-        // If the balance is below the limit then set limt to current balance (no withdraws are possible)
-        limit = Math.min(balance, limit);
-        // If limit goes below what the protected percentage is set it to the maxLimit
-        return  Math.max(limit, maxLimit);
+        // The amount that should be added as availble
+        uint allowedWithdrawal = (maxWithdraw * timeDiff) / _period;
+
+        uint reserve = currentLimit[token];
+        if (currentLimit[token] > allowedWithdrawal){
+            reserve = currentLimit[token]  - allowedWithdrawal;
+        }
+
+        return Math.max(reserve, minReserve);
     }
 
     function deposit(address token, uint amount) external payable {
