@@ -1,6 +1,6 @@
 [![codecov](https://codecov.io/gh/balancednetwork/balanced-solidity-contracts/graph/badge.svg?token=2EkyzZQNJx)](https://codecov.io/gh/balancednetwork/balanced-solidity-contracts)
 
-[![build](https://github.com/balancednetwork/balanced-solidity-contracts/blob/main/.github/workflows/test.yml/badge.svg?branch=main)](https://github.com/balancednetwork/balanced-solidity-contracts/blob/main/.github/workflows/test.yml)
+[![build](https://github.com/balancednetwork/balanced-solidity-contracts/blob/main/.github/workflows/test.yml/badge.svg?branch=main)](https://github.com/balancednetwork/balanced-solidity-contracts/actions/workflows/test.yml)
 
 ## Foundry
 
