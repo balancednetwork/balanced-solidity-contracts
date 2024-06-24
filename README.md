@@ -1,3 +1,5 @@
+[![codecov](https://codecov.io/gh/balancednetwork/balanced-solidity-contracts/graph/badge.svg?token=2EkyzZQNJx)](https://codecov.io/gh/balancednetwork/balanced-solidity-contracts) ![build](https://github.com/balancednetwork/balanced-solidity-contracts/actions/workflows/test.yml/badge.svg)
+
 ## Foundry
 
 **Foundry is a blazing fast, portable and modular toolkit for Ethereum application development written in Rust.**
