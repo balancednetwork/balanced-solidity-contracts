@@ -22,20 +22,6 @@ library RLPDecodeStruct {
         return string(ls[0].toBytes());
     }
 
-    function decodeDeposit(
-        bytes memory _rlp
-    ) internal pure returns (Messages.Deposit memory) {
-        RLPDecode.RLPItem[] memory ls = _rlp.toRlpItem().toList();
-        return
-            Messages.Deposit(
-                string(ls[1].toBytes()),
-                string(ls[2].toBytes()),
-                string(ls[3].toBytes()),
-                ls[4].toUint(),
-                ls[5].toBytes()
-            );
-    }
-
     function decodeDepositRevert(
         bytes memory _rlp
     ) internal pure returns (Messages.DepositRevert memory) {

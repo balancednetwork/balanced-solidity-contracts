@@ -25,11 +25,19 @@ contract OracleProxy is UUPSUpgradeable, OwnableUpgradeable {
     address public xCallManager;
     mapping(address => bool) public creditVaults;
 
+    uint private constant MICROSECONDS_IN_SECONDS = 1_000_000;
+
+
+    constructor() {
+        _disableInitializers();
+    }
+
     function initialize(
         address _xCall,
         string memory _iconOracle,
         address _xCallManager
     ) public initializer {
+        require(_xCall != address(0) &&  _xCallManager != address(0), "Zero address not allowed");
         xCall = _xCall;
         iconOracle = _iconOracle;
         xCallManager = _xCallManager;
@@ -41,6 +49,7 @@ contract OracleProxy is UUPSUpgradeable, OwnableUpgradeable {
         string memory _iconOracle,
         address _xCallManager
     ) external onlyOwner {
+        require(_xCall != address(0) &&  _xCallManager != address(0), "Zero address not allowed");
         xCall = _xCall;
         iconOracle = _iconOracle;
         xCallManager = _xCallManager;
@@ -48,6 +57,7 @@ contract OracleProxy is UUPSUpgradeable, OwnableUpgradeable {
 
 
     function addCreditVault(address _vault) external onlyOwner {
+        require(_vault != address(0), "Zero address not allowed");
         creditVaults[_vault] = true;
     }
 
@@ -90,7 +100,7 @@ contract OracleProxy is UUPSUpgradeable, OwnableUpgradeable {
         return Messages.UpdatePriceData(
             symbol,
             rate,
-            block.timestamp*1000000
+            block.timestamp*MICROSECONDS_IN_SECONDS
         );
     }
 }

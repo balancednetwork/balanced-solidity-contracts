@@ -44,12 +44,24 @@ contract AssetManager is
     mapping(address => uint) public lastUpdate;
     mapping(address => uint) public currentLimit;
 
-    uint private constant POINTS = 10000;
+    uint private constant POINTS = 10_000;
+    uint private constant DAY_IN_SECONDS = 86_400;
+
+    event RateLimitConfigured(address indexed token, uint period, uint percentage);
+    event ResetLimit(address indexed token);
+    event AssetDeposited(address indexed token, uint amount);
+
+
+    constructor() {
+        _disableInitializers();
+    }
+
     function initialize(
         address _xCall,
         string memory _iconAssetManager,
         address _xCallManager
     ) public initializer {
+        require(_xCall != address(0) || _xCallManager != address(0), "Zero address not allowed");
         xCall = _xCall;
         xCallNetworkAddress = ICallService(xCall).getNetworkAddress();
         iconAssetManager = _iconAssetManager;
@@ -76,15 +88,20 @@ contract AssetManager is
         uint _percentage
     ) external onlyOwner {
         require(_percentage <= POINTS,"Percentage should be less than or equal to POINTS");
+        require(_period <= DAY_IN_SECONDS*30, "Period should be less than or equal to 30 days");
 
         period[token] = _period;
         percentage[token] = _percentage;
         lastUpdate[token] = block.timestamp;
         currentLimit[token] = (balanceOf(token) * _percentage) / POINTS;
+
+        emit RateLimitConfigured(token, _period, _percentage);
     }
 
     function resetLimit(address token) external onlyOwner {
         currentLimit[token] = (balanceOf(token) * percentage[token]) / POINTS;
+
+        emit ResetLimit(token);
     }
 
    function getWithdrawLimit(address token) external view returns (uint)  {
@@ -101,26 +118,28 @@ contract AssetManager is
         lastUpdate[token] = block.timestamp;
     }
 
-    function calculateLimit(uint balance, address token) internal view returns (uint) {
+     function calculateLimit(uint balance, address token) internal view returns (uint) {
         uint _period = period[token];
         uint _percentage = percentage[token];
         if (_period == 0) {
             return 0;
         }
 
-        uint maxLimit = (balance * _percentage) / POINTS;
+        uint minReserve = (balance * _percentage) / POINTS;
         // The maximum amount that can be withdraw in one period
-        uint maxWithdraw = balance - maxLimit;
+        uint maxWithdraw = balance - minReserve;
         uint timeDiff = block.timestamp - lastUpdate[token];
         timeDiff = Math.min(timeDiff, _period);
 
-        // The amount that should be added as availbe
-        uint addedAllowedWithdrawal = (maxWithdraw * timeDiff) / _period;
-        uint limit = currentLimit[token] - addedAllowedWithdrawal;
-        // If the balance is below the limit then set limt to current balance (no withdraws are possible)
-        limit = Math.min(balance, limit);
-        // If limit goes below what the protected percentage is set it to the maxLimit
-        return  Math.max(limit, maxLimit);
+        // The amount that should be added as availble
+        uint allowedWithdrawal = (maxWithdraw * timeDiff) / _period;
+
+        uint reserve = currentLimit[token];
+        if (currentLimit[token] > allowedWithdrawal){
+            reserve = currentLimit[token]  - allowedWithdrawal;
+        }
+
+        return Math.max(reserve, minReserve);
     }
 
     function deposit(address token, uint amount) external payable {
@@ -166,8 +185,11 @@ contract AssetManager is
         string memory to,
         bytes memory data
     ) internal {
-        require(amount >= 0, "Amount less than minimum amount");
+        require(amount > 0, "Amount less than minimum amount");
+        uint256 balanceBefore = balanceOf(token);
         IERC20(token).safeTransferFrom(msg.sender, address(this), amount);
+        uint256 balanceAfter = balanceOf(token);
+        amount = balanceAfter - balanceBefore;
         sendDepositMessage(token, amount, to, data, msg.value);
     }
 
@@ -210,6 +232,8 @@ contract AssetManager is
             protocols.sources,
             protocols.destinations
         );
+
+        emit AssetDeposited(token, amount);
     }
 
     function handleCallMessage(
