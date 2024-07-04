@@ -16,7 +16,12 @@ import "./RLPEncodeStruct.sol";
 import "./RLPDecodeStruct.sol";
 import "../lib/interfaces/IXCallManager.sol";
 
-contract XCallManager is IXCallManager, ICallServiceReceiver, UUPSUpgradeable, OwnableUpgradeable {
+contract XCallManager is
+    IXCallManager,
+    ICallServiceReceiver,
+    UUPSUpgradeable,
+    OwnableUpgradeable
+{
     using Strings for string;
     using NetworkAddress for string;
     using ParseAddress for address;
@@ -35,7 +40,20 @@ contract XCallManager is IXCallManager, ICallServiceReceiver, UUPSUpgradeable, O
     string[] public sources;
     string[] public destinations;
 
+
     mapping(bytes => bool) public whitelistedActions;
+    address private proposedAdmin;
+
+    event ProtocolProposed(string indexed protocol);
+    event ProtocolRemoved(string indexed protocol);
+    event ActionWhitelisted(bytes indexed action);
+    event ActionRemoved(bytes indexed action);
+    event AdminTransferred(address indexed newAdmin);
+    event ProtocolsConfigured(string[] sources, string[] destinations);
+
+    constructor() {
+        _disableInitializers();
+    }
 
     function initialize(
         address _xCall,
@@ -44,12 +62,12 @@ contract XCallManager is IXCallManager, ICallServiceReceiver, UUPSUpgradeable, O
         string[] memory _sources,
         string[] memory _destinations
     ) public initializer {
+        require(_xCall != address(0) && _admin != address(0), "Zero address not allowed");
         xCall = _xCall;
         xCallNetworkAddress = ICallService(xCall).getNetworkAddress();
         iconGovernance = _iconGovernance;
         admin = _admin;
-        sources = _sources;
-        destinations = _destinations;
+        _setProtocols(_sources, _destinations);
         __Ownable_init(msg.sender);
     }
 
@@ -73,23 +91,55 @@ contract XCallManager is IXCallManager, ICallServiceReceiver, UUPSUpgradeable, O
 
     function proposeRemoval(string memory protocol) external onlyAdmin {
         proposedProtocolToRemove = protocol;
+        emit ProtocolProposed(protocol);
     }
 
     function whitelistAction(bytes memory action) external onlyAdmin {
         whitelistedActions[action] = true;
+        emit ActionWhitelisted(action);
     }
 
     function removeAction(bytes memory action) external onlyAdmin {
         delete whitelistedActions[action];
+        emit ActionRemoved(action);
     }
 
-    function setAdmin(address _admin) external onlyAdmin() {
-        admin = _admin;
+    function setAdmin(address _newAdmin) external onlyAdmin() {
+        require(_newAdmin != address(0), "New admin cannot be the zero address");
+        proposedAdmin = _newAdmin;
     }
 
-    function setProtocols(string[] memory _sources, string[] memory _destinations) external onlyOwner() {
+    function acceptAdminRole() external {
+        require(msg.sender == proposedAdmin, "Caller is not the proposed admin");
+        admin = proposedAdmin;
+        proposedAdmin = address(0);
+        emit AdminTransferred(admin);
+    }
+
+    function setProtocols(
+        string[] memory _sources,
+        string[] memory _destinations
+    ) external onlyOwner {
+        _setProtocols(_sources, _destinations);
+    }
+
+    function _setProtocols(
+        string[] memory _sources,
+        string[] memory _destinations
+    ) internal {
+        require(
+            !hasDuplicates(_sources),
+            "Source protcols cannot contain duplicates"
+        );
+        require(
+            !hasDuplicates(_destinations),
+            "Destination protcols cannot contain duplicates"
+        );
         sources = _sources;
         destinations = _destinations;
+
+        emit ProtocolsConfigured(_sources, _destinations);
+
     }
 
     function verifyProtocols(
@@ -120,7 +170,10 @@ contract XCallManager is IXCallManager, ICallServiceReceiver, UUPSUpgradeable, O
             verifyProtocolRecovery(protocols);
         }
 
-        require(whitelistedActions[data], "Actions in not whitelisted by admin");
+        require(
+            whitelistedActions[data],
+            "Actions in not whitelisted by admin"
+        );
         delete whitelistedActions[data];
 
         if (method.compareTo(Messages.EXECUTE_NAME)) {
@@ -145,32 +198,61 @@ contract XCallManager is IXCallManager, ICallServiceReceiver, UUPSUpgradeable, O
         );
     }
 
+    // Verifies that all required protocols exists in the protocols used for delivery.
     function verifyProtocolsUnordered(
-        string[] memory array1,
-        string[] memory array2
+        string[] memory requiredProtocols,
+        string[] memory deliveryProtocols
     ) internal pure returns (bool) {
         // Check if the arrays have the same length
-        if (array1.length != array2.length) {
+        if (requiredProtocols.length != deliveryProtocols.length) {
             return false;
         }
 
-        for (uint i = 0; i < array1.length; i++) {
-            for (uint j = 0; j < array2.length; j++) {
-                if (array1[i].compareTo(array2[j])) {
+        for (uint i = 0; i < requiredProtocols.length; i++) {
+            for (uint j = 0; j < deliveryProtocols.length; j++) {
+                if (requiredProtocols[i].compareTo(deliveryProtocols[j])) {
                     break;
-                } else {
-                    if (j == array2.length - 1) return false;
-                    continue;
                 }
+                if (j == deliveryProtocols.length - 1) return false;
             }
         }
 
         return true;
     }
 
+    function hasDuplicates(string[] memory arr) internal pure returns (bool) {
+        for (uint i = 0; i < arr.length; i++) {
+            for (uint j = i + 1; j < arr.length; j++) {
+                if (
+                    keccak256(abi.encodePacked(arr[i])) ==
+                    keccak256(abi.encodePacked(arr[j]))
+                ) {
+                    return true;
+                }
+            }
+        }
+        return false;
+    }
+
+    function contains(
+        string memory item,
+        string[] memory arr
+    ) internal pure returns (bool) {
+        for (uint i = 0; i < arr.length; i++) {
+            if (
+                keccak256(abi.encodePacked(arr[i])) ==
+                keccak256(abi.encodePacked(item))
+            ) {
+                return true;
+            }
+        }
+        return false;
+    }
+
     function getModifiedProtocols() internal view returns (string[] memory) {
         require(
-            bytes(proposedProtocolToRemove).length != 0,
+            bytes(proposedProtocolToRemove).length != 0 &&
+            contains(proposedProtocolToRemove, sources),
             "No proposal for removal exists"
         );
 
