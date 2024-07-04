@@ -50,10 +50,6 @@ contract XCallManager is
     event ActionRemoved(bytes indexed action);
     event AdminTransferred(address indexed newAdmin);
     event ProtocolsConfigured(string[] sources, string[] destinations);
-    event ProtocolExecuted(
-        
-    );
-
 
     constructor() {
         _disableInitializers();
