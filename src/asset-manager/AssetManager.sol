@@ -134,11 +134,10 @@ contract AssetManager is
         // The amount that should be added as availble
         uint allowedWithdrawal = (maxWithdraw * timeDiff) / _period;
 
-        uint reserve = currentLimit[token];
-        if (currentLimit[token] > allowedWithdrawal){
-            reserve = currentLimit[token]  - allowedWithdrawal;
+        if (currentLimit[token] < allowedWithdrawal){
+            return minReserve;
         }
-
+        uint reserve = currentLimit[token]  - allowedWithdrawal;
         return Math.max(reserve, minReserve);
     }
 
