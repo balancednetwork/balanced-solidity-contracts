@@ -9,7 +9,6 @@ contract StakedICX is SpokeToken {
     }
     string private constant NAME = "Staked ICX";
     string private constant SYMBOL = "SICX";
-    uint8 private constant DECIMALS = 12;
 
     function initialize_token(
         address _xCall,
@@ -25,7 +24,4 @@ contract StakedICX is SpokeToken {
         );
     }
 
-    function decimals() public pure override returns (uint8) {
-        return DECIMALS;
-    }
 }

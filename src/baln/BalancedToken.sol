@@ -9,7 +9,6 @@ contract BalancedToken is SpokeToken {
     }
     string private constant NAME = "Balanced Token";
     string private constant SYMBOL = "BALN";
-    uint8 private constant DECIMALS = 12;
 
     function initialize_token(
         address _xCall,
@@ -23,9 +22,5 @@ contract BalancedToken is SpokeToken {
             _iconTokenAddress,
             _xCallManager
         );
-    }
-
-    function decimals() public pure override returns (uint8) {
-        return DECIMALS;
     }
 }
