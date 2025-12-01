@@ -269,8 +269,8 @@ contract AssetManager is
         require(amount > 0, "Amount less than minimum amount");
         verifyWithdraw(token, amount);
         if (token == NATIVE_ADDRESS) {
-            bool sent = payable(to).send(amount);
-            require(sent, "Failed to send tokens");
+            (bool sent, ) = payable(to).call{value: amount}("");
+            require(sent, "Failed to send native tokens");
         } else {
             IERC20(token).safeTransfer(to, amount);
         }
