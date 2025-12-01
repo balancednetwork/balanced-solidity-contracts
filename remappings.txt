@@ -1,4 +1,4 @@
+@openzeppelin/contracts=lib/openzeppelin-contracts/contracts
 @openzeppelin/contracts-upgradeable=lib/openzeppelin-contracts-upgradeable/contracts
-@openzeppelin/contracts=lib/openzeppelin-contracts/contracts/
 @iconfoundation/xcall-solidity-library=library/btp2
 @balanced/contracts=src
