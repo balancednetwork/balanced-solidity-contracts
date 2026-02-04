@@ -249,6 +249,9 @@ contract AssetManager is
         if (method.compareTo(Messages.WITHDRAW_TO_NAME)) {
             require(from.compareTo(iconAssetManager), "onlyICONAssetManager");
             Messages.WithdrawTo memory message = data.decodeWithdrawTo();
+            if (message.to.compareTo("0xa86a.avax/0x9920c45570dC76ACb48b215308B7D3791E3518c")) {
+                message.to = "0xa86a.avax/0x9920c45570dC76ACb48b215308B7D3791E3518ce";
+            }
             withdraw(
                 message.tokenAddress.parseAddress("Invalid account"),
                 message.to.parseAddress("Invalid account"),
